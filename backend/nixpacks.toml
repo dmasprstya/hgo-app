@@ -1,0 +1,8 @@
+[phases.setup]
+nixPkgs = ["file"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.build]
+cmds = ["alembic upgrade head"]
