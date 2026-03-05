@@ -95,7 +95,7 @@ export default function Ranking() {
             </div>
 
             {data?.meta && (
-                <div className="flex items-center justify-between text-sm text-gray-500">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-500">
                     <span>{data.meta.total} patients ranked</span>
                     <Pagination page={page} totalPages={data.meta.total_pages} onChange={setPage} />
                 </div>

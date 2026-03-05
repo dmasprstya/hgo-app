@@ -62,9 +62,9 @@ export default function Patients() {
         else updateMut.mutate({ id: selected.id, d: { ...form, age: Number(form.age) } })
     }
 
-    return (
+        return (
         <div className="space-y-4 animate-fade-in">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Patients</h1>
                     <p className="text-gray-400 text-sm">Manage patient records and HGO results</p>

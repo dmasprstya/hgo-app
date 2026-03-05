@@ -41,7 +41,7 @@ export default function Dashboard() {
             </div>
 
             {/* KPI Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <KpiCard label="Total Patients" value={summary?.total_patients?.toLocaleString() ?? 0} color="primary" />
                 <KpiCard label="Critical Priority" value={summary?.critical_count ?? 0} color="danger" />
                 <KpiCard label="High Priority" value={summary?.high_count ?? 0} color="warning" />
@@ -88,7 +88,7 @@ export default function Dashboard() {
             {/* Priority breakdown */}
             <div className="card">
                 <h3 className="text-base font-semibold text-white mb-4">Priority Breakdown</h3>
-                <div className="grid grid-cols-4 gap-4 text-center">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                     {[
                         { label: 'Critical', count: summary?.critical_count, color: 'bg-red-500' },
                         { label: 'High', count: summary?.high_count, color: 'bg-orange-500' },

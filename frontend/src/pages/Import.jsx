@@ -54,7 +54,7 @@ export default function Import() {
             </div>
 
             <div className="card space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <h3 className="font-semibold text-white">Upload File</h3>
                     <Button variant="ghost" size="sm" onClick={() => importService.getTemplate()}>
                         📥 Download Template
@@ -82,7 +82,7 @@ export default function Import() {
                 {status && (
                     <div className="space-y-3 pt-2">
                         <ProgressBar value={status.progress_pct ?? 0} label={`Status: ${status.status}`} />
-                        <div className="grid grid-cols-3 gap-4 text-center text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center text-sm">
                             <div className="glass rounded-xl p-3">
                                 <p className="text-gray-400 text-xs">Total Rows</p>
                                 <p className="font-bold text-white text-lg">{status.total_rows}</p>

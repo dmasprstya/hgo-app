@@ -1,4 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate, NavLink, useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { clsx } from 'clsx'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import useAuthStore from './store/authStore'
@@ -33,10 +35,16 @@ const NAV_LINKS = [
 
 function AppLayout({ children }) {
     const { user, logout } = useAuth()
+    const [sidebarOpen, setSidebarOpen] = useState(false)
     return (
-        <div className="flex min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-gray-950 md:flex">
             {/* Sidebar */}
-            <aside className="w-64 shrink-0 glass border-r border-white/10 flex flex-col">
+            <aside
+                className={clsx(
+                    'fixed inset-y-0 left-0 z-40 w-64 shrink-0 glass border-r border-white/10 flex flex-col transform transition-transform duration-200 md:static md:translate-x-0',
+                    sidebarOpen ? 'translate-x-0' : '-translate-x-full',
+                )}
+            >
                 {/* Logo */}
                 <div className="p-5 border-b border-white/10">
                     <div className="flex items-center gap-3">
@@ -83,9 +91,37 @@ function AppLayout({ children }) {
                 </div>
             </aside>
 
+            {/* Mobile overlay */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* Main */}
             <main className="flex-1 overflow-auto">
-                <div className="p-6 max-w-7xl mx-auto">
+                {/* Mobile top bar */}
+                <div className="md:hidden sticky top-0 z-20 flex items-center justify-between px-4 py-3 border-b border-white/10 bg-gray-950/95 backdrop-blur">
+                    <button
+                        onClick={() => setSidebarOpen(true)}
+                        className="p-2 rounded-lg bg-white/5 hover:bg-white/10 text-gray-200"
+                        aria-label="Open navigation"
+                    >
+                        ☰
+                    </button>
+                    <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-600 to-purple-600 flex items-center justify-center shadow-lg">
+                            <span className="text-sm">🏥</span>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm font-semibold text-white">SPK HGO</p>
+                            <p className="text-[11px] text-gray-500">Discovery</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="p-4 sm:p-6 max-w-7xl mx-auto">
                     {children}
                 </div>
             </main>

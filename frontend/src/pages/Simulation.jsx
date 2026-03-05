@@ -173,7 +173,7 @@ export default function Simulation() {
             {/* Criteria weights reference */}
             <div className="card">
                 <h3 className="font-semibold text-white mb-3">Criteria Weights Reference</h3>
-                <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     {[['Cr1', 'Insurance', 'positive', 0.10], ['Cr2', 'Surgery', 'negative', 0.20], ['Cr3', 'Room Class', 'positive', 0.075], ['Cr4', 'Admission', 'positive', 0.125], ['Cr5', 'Severity', 'positive', 0.20], ['Cr6', 'Test Result', 'positive', 0.15]].map(([code, name, type, weight]) => (
                         <div key={code} className="glass rounded-xl p-3 text-center">
                             <p className="text-xs text-primary-400 font-mono font-bold">{code}</p>
