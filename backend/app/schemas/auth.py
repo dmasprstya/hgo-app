@@ -1,10 +1,10 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional
 from app.models.user import UserRole
 
 
 class LoginRequest(BaseModel):
-    email: EmailStr
+    email: str  # str not EmailStr — email-validator v2 rejects .local TLD
     password: str
 
 
