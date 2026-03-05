@@ -10,7 +10,10 @@ _ssl_ctx.verify_mode = ssl_module.CERT_NONE
 
 engine = create_async_engine(
     settings.DATABASE_URL,
-    connect_args={"ssl": _ssl_ctx},  # Required for Supabase
+    connect_args={
+        "ssl": _ssl_ctx,              # Required for Supabase SSL
+        "statement_cache_size": 0,    # Required for PgBouncer Transaction Mode
+    },
     pool_pre_ping=True,
     pool_size=5,
     max_overflow=10,
