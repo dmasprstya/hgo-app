@@ -57,13 +57,31 @@ export default function Simulation() {
             {error && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-xl px-4 py-3">{error}</div>}
 
             {simStatus && (
-                <div className={`rounded-xl p-4 border text-sm flex gap-3 items-center ${simStatus.status === 'completed' ? 'bg-green-500/10 border-green-500/30 text-green-400' :
-                        simStatus.status === 'failed' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
-                            'bg-primary-500/10 border-primary-500/30 text-primary-400'
+                <div className={`rounded-xl p-4 border text-sm flex flex-col gap-3 ${simStatus.status === 'completed' ? 'bg-green-500/10 border-green-500/30 text-green-400' :
+                    simStatus.status === 'failed' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
+                        'bg-primary-500/10 border-primary-500/30 text-primary-400'
                     }`}>
-                    {simStatus.status === 'running' && <Spinner size={4} />}
-                    Simulation {simStatus.status} — {simStatus.total_patients} patients
-                    {simStatus.status === 'completed' && ' ✅ View results in Ranking page.'}
+                    <div className="flex items-center gap-3">
+                        {simStatus.status === 'running' && <Spinner size={4} />}
+                        <span>
+                            Simulation {simStatus.status} — {simStatus.total_patients} patients
+                            {simStatus.status === 'completed' && ' ✅ View results in Ranking page.'}
+                        </span>
+                    </div>
+                    {simStatus.status === 'running' && simStatus.total_patients > 0 && (
+                        <div className="w-full mt-2">
+                            <div className="flex justify-between text-xs mb-1">
+                                <span>Processing...</span>
+                                <span>{simStatus.processed_patients || 0} / {simStatus.total_patients} ({Math.round(((simStatus.processed_patients || 0) / simStatus.total_patients) * 100)}%)</span>
+                            </div>
+                            <div className="w-full bg-white/10 rounded-full h-2">
+                                <div
+                                    className="bg-primary-500 h-2 rounded-full transition-all duration-500"
+                                    style={{ width: `${Math.round(((simStatus.processed_patients || 0) / simStatus.total_patients) * 100)}%` }}
+                                ></div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
