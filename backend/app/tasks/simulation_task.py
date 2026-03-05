@@ -53,41 +53,54 @@ def run_hgo_simulation(self: Task, session_id: str):
             from app.utils.hgo import run_full_hgo
             results = run_full_hgo(patients)
 
-            # Bulk upsert hgo_results
+            # Bulk upsert hgo_results in batches to update progress
             now = datetime.now(timezone.utc)
-            upsert_data = [
-                {
-                    "id": str(uuid.uuid4()),
-                    "patient_id": r["patient_id"],
-                    "output_score": r["output_score"],
-                    "hgod_index": r["hgod_index"],
-                    "rank": r["rank"],
-                    "calculated_at": now,
-                }
-                for r in results
-            ]
+            total = len(results)
+            batch_size = 500
+            processed = 0
 
-            for row_data in upsert_data:
+            for i in range(0, total, batch_size):
+                batch = results[i:i + batch_size]
+                upsert_data = [
+                    {
+                        "id": str(uuid.uuid4()),
+                        "patient_id": r["patient_id"],
+                        "output_score": r["output_score"],
+                        "hgod_index": r["hgod_index"],
+                        "rank": r["rank"],
+                        "calculated_at": now,
+                    }
+                    for r in batch
+                ]
+
+                for row_data in upsert_data:
+                    session.execute(
+                        text(
+                            """
+                            INSERT INTO hgo_results (id, patient_id, output_score, hgod_index, rank, calculated_at)
+                            VALUES (:id, :patient_id, :output_score, :hgod_index, :rank, :calculated_at)
+                            ON CONFLICT (patient_id) DO UPDATE
+                            SET output_score=EXCLUDED.output_score,
+                                hgod_index=EXCLUDED.hgod_index,
+                                rank=EXCLUDED.rank,
+                                calculated_at=EXCLUDED.calculated_at
+                            """
+                        ),
+                        row_data,
+                    )
+                
+                processed += len(batch)
                 session.execute(
-                    text(
-                        """
-                        INSERT INTO hgo_results (id, patient_id, output_score, hgod_index, rank, calculated_at)
-                        VALUES (:id, :patient_id, :output_score, :hgod_index, :rank, :calculated_at)
-                        ON CONFLICT (patient_id) DO UPDATE
-                        SET output_score=EXCLUDED.output_score,
-                            hgod_index=EXCLUDED.hgod_index,
-                            rank=EXCLUDED.rank,
-                            calculated_at=EXCLUDED.calculated_at
-                        """
-                    ),
-                    row_data,
+                    text("UPDATE simulation_sessions SET processed_patients=:p WHERE id=:id"),
+                    {"p": processed, "id": session_id},
                 )
+                session.commit()
 
             session.execute(
                 text(
-                    "UPDATE simulation_sessions SET status='completed', total_patients=:t WHERE id=:id"
+                    "UPDATE simulation_sessions SET status='completed', total_patients=:t, processed_patients=:t WHERE id=:id"
                 ),
-                {"t": len(results), "id": session_id},
+                {"t": total, "id": session_id},
             )
             session.commit()
 

@@ -84,6 +84,7 @@ async def simulation_status(
             "job_id": session.id,
             "status": session.status,
             "total_patients": session.total_patients,
+            "processed_patients": session.processed_patients,
             "notes": session.notes,
             "created_at": session.created_at.isoformat(),
         },

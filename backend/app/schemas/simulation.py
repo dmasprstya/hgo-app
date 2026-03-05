@@ -12,6 +12,7 @@ class SimulationSessionOut(BaseModel):
     job_id: str
     status: str
     total_patients: int
+    processed_patients: int
     notes: Optional[str] = None
     created_at: datetime
 

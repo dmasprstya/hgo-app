@@ -34,6 +34,7 @@ class SimulationSession(Base):
     id: Mapped[str] = mapped_column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[str] = mapped_column(String(36), ForeignKey("users.id"))
     total_patients: Mapped[int] = mapped_column(Integer, default=0)
+    processed_patients: Mapped[int] = mapped_column(Integer, default=0)
     status: Mapped[SimulationStatus] = mapped_column(SAEnum(SimulationStatus), default=SimulationStatus.pending)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
