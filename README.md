@@ -243,8 +243,6 @@ python seed_standalone.py
 
 ## 🧠 Algoritma HGO
 
-**Honey Badger Optimization** adalah algoritma metaheuristik berbasis perilaku honey badger untuk optimasi multi-kriteria.
-
 Kriteria yang digunakan:
 
 | Kode | Nama            | Tipe     | Bobot |
