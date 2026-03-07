@@ -80,7 +80,7 @@ CRITERIA_ORDER = ["Cr1", "Cr2", "Cr3", "Cr4", "Cr5", "Cr6"]
 
 def convert_to_crisp(criterion_code: str, raw_value: str) -> int:
     """Stage H — Convert raw string value to crisp integer."""
-    code = criterion_code.upper()
+    code = criterion_code.strip()
     if code not in CRISP_MAP:
         raise ValueError(f"Unknown criterion: {criterion_code}")
     mapping = CRISP_MAP[code]
