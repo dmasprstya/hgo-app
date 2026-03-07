@@ -36,7 +36,11 @@ api.interceptors.response.use(
     async (error) => {
         const originalRequest = error.config
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        // Skip refresh attempt for the refresh endpoint itself to prevent
+        // infinite loop when the refresh token is also expired
+        const isRefreshRequest = originalRequest.url?.includes('/api/auth/refresh')
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isRefreshRequest) {
             if (isRefreshing) {
                 return new Promise((resolve, reject) => {
                     failedQueue.push({ resolve, reject })
@@ -71,5 +75,24 @@ api.interceptors.response.use(
         return Promise.reject(error)
     }
 )
+
+// ── Proactive Token Refresh ──────────────────────────────────────────────────
+// Refresh the access token every 12 minutes to prevent expiry during
+// long-running operations (e.g. simulation with 4000+ patients).
+const PROACTIVE_REFRESH_INTERVAL_MS = 12 * 60 * 1000 // 12 minutes
+
+setInterval(async () => {
+    const { isAuthenticated } = useAuthStore.getState()
+    if (!isAuthenticated) return
+
+    try {
+        const res = await api.post('/api/auth/refresh')
+        const { access_token, ...user } = res.data
+        useAuthStore.getState().setAuth(access_token, user)
+    } catch {
+        // Refresh failed — the response interceptor will handle redirect
+        // on the next API call that receives a 401.
+    }
+}, PROACTIVE_REFRESH_INTERVAL_MS)
 
 export default api
