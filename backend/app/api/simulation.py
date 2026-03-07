@@ -1,5 +1,6 @@
 import uuid
 import io
+import math
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, Query, HTTPException
@@ -101,22 +102,53 @@ async def simulation_results(
     current_user: User = Depends(get_current_user),
 ):
     offset = (page - 1) * limit
+
+    # Dynamic sort mapping
+    sort_map = {
+        "rank": HGOResult.rank.asc(),
+        "hgod_index": HGOResult.hgod_index.asc(),
+        "output_score": HGOResult.output_score.desc(),
+    }
+    order = sort_map.get(sort, HGOResult.rank.asc())
+
     q = (
         select(HGOResult, Patient)
         .join(Patient, HGOResult.patient_id == Patient.id)
-        .order_by(HGOResult.rank.asc())
+        .order_by(order)
     )
-    total_q = select(func.count()).select_from(HGOResult)
-    total = (await db.execute(total_q)).scalar() or 0
+
+    # Total count for priority boundary calculation
+    all_count_q = select(func.count()).select_from(HGOResult)
+    all_total = (await db.execute(all_count_q)).scalar() or 0
+
+    # Early return if no simulation data
+    if all_total == 0:
+        return {
+            "status": "success",
+            "data": [],
+            "meta": {"page": page, "limit": limit, "total": 0, "total_pages": 0},
+        }
+
+    # Priority filter via SQL rank range
+    if priority:
+        bounds = {"Critical": (0, 0.25), "High": (0.25, 0.50), "Medium": (0.50, 0.75), "Low": (0.75, 1.0)}
+        lo_pct, hi_pct = bounds.get(priority, (0, 1))
+        rank_lo = math.floor(all_total * lo_pct) + 1
+        rank_hi = math.floor(all_total * hi_pct)
+        if priority == "Low":
+            rank_hi = all_total  # include last patient
+        q = q.where(HGOResult.rank.between(rank_lo, rank_hi))
+
+    # Count after filter
+    count_q = select(func.count()).select_from(q.subquery())
+    total = (await db.execute(count_q)).scalar() or 0
 
     q = q.offset(offset).limit(limit)
     rows = (await db.execute(q)).all()
 
     results = []
     for hgo, patient in rows:
-        pl = _priority_level(hgo.rank, total)
-        if priority and pl != priority:
-            continue
+        pl = _priority_level(hgo.rank, all_total)
         results.append(SimulationResultOut(
             patient_id=patient.id,
             patient_code=patient.patient_code,
@@ -131,7 +163,7 @@ async def simulation_results(
     return {
         "status": "success",
         "data": results,
-        "meta": {"page": page, "limit": limit, "total": total, "total_pages": -(-total // limit)},
+        "meta": {"page": page, "limit": limit, "total": total, "total_pages": -(-total // limit) if total > 0 else 0},
     }
 
 
