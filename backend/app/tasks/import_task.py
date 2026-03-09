@@ -1,6 +1,5 @@
 import uuid
 import json
-import os
 from datetime import datetime, timezone
 from celery import Task
 
@@ -19,9 +18,10 @@ def _update_progress(r, job_id: str, **kwargs):
 
 
 @celery_app.task(bind=True, name="app.tasks.import_task.process_import")
-def process_import(self: Task, job_id: str, file_path: str):
+def process_import(self: Task, job_id: str, file_ext: str):
     """Process Excel/CSV import in 500-row chunks."""
     import pandas as pd
+    from io import BytesIO
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import Session
 
@@ -63,13 +63,22 @@ def process_import(self: Task, job_id: str, file_path: str):
         session.commit()
 
     try:
-        ext = file_path.rsplit(".", 1)[-1].lower()
-        if ext in ("xlsx", "xls"):
-            # read_excel doesn't support chunksize; read all then chunk manually
-            full_df = pd.read_excel(file_path)
+        # Read file bytes from Redis (shared between web server and worker)
+        import redis as _redis
+        r_file = _redis.from_url(settings.REDIS_URL)
+        redis_key = f"import_file:{job_id}"
+        file_bytes = r_file.get(redis_key)
+        if not file_bytes:
+            raise FileNotFoundError(f"File data not found in Redis for job {job_id}")
+        # Clean up Redis key after reading
+        r_file.delete(redis_key)
+
+        buf = BytesIO(file_bytes)
+        if file_ext in ("xlsx", "xls"):
+            full_df = pd.read_excel(buf)
             df_iter = (full_df.iloc[i:i + 500] for i in range(0, len(full_df), 500))
         else:
-            df_iter = pd.read_csv(file_path, chunksize=500)
+            df_iter = pd.read_csv(buf, chunksize=500)
 
         with Session(engine) as session:
             # Load criteria
@@ -188,8 +197,4 @@ def process_import(self: Task, job_id: str, file_path: str):
         if r:
             _update_progress(r, job_id, status="failed", total_rows=0, processed_rows=0, failed_rows=0, progress_pct=0)
         raise exc
-    finally:
-        try:
-            os.unlink(file_path)
-        except Exception:
-            pass
+

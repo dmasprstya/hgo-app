@@ -1,14 +1,12 @@
 import uuid
-import os
 import json
-import tempfile
+import io
 from datetime import datetime, timezone
 from typing import Optional
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, desc
-import io
 
 from app.db.session import get_db
 from app.models.result import ImportJob, ImportJobStatus
@@ -67,22 +65,24 @@ async def upload_file(
     if mime not in ALLOWED_MIME_TYPES and not (file.filename or "").endswith(".csv"):
         raise HTTPException(415, f"Unsupported file type: {mime}")
 
-    # Save to temp
-    suffix = ".xlsx" if "xlsx" in (file.filename or "") else ".csv"
-    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-    tmp.write(content)
-    tmp.close()
+    # Detect file extension
+    filename = file.filename or "upload.xlsx"
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "xlsx"
 
     # Row count estimate
     import pandas as pd
-    df = pd.read_excel(tmp.name) if suffix == ".xlsx" else pd.read_csv(tmp.name)
+    buf = io.BytesIO(content)
+    if ext in ("xlsx", "xls"):
+        df = pd.read_excel(buf)
+    else:
+        df = pd.read_csv(buf)
     total_rows = len(df)
 
     # Create job record
     job = ImportJob(
         id=str(uuid.uuid4()),
         user_id=current_user.id,
-        filename=file.filename or "upload",
+        filename=filename,
         total_rows=total_rows,
         status=ImportJobStatus.pending,
     )
@@ -90,13 +90,15 @@ async def upload_file(
     await db.commit()
     await db.refresh(job)
 
-    # Dispatch task
-    if total_rows <= 1000:
-        from app.tasks.import_task import process_import
-        process_import.delay(job.id, tmp.name)
-    else:
-        from app.tasks.import_task import process_import
-        process_import.delay(job.id, tmp.name)
+    # Store file bytes in Redis so Celery worker can access them
+    import redis as _redis
+    r = _redis.from_url(settings.REDIS_URL)
+    redis_key = f"import_file:{job.id}"
+    r.set(redis_key, content, ex=3600)  # 1 hour TTL
+
+    # Dispatch Celery task
+    from app.tasks.import_task import process_import
+    process_import.delay(job.id, ext)
 
     return {
         "status": "success",
