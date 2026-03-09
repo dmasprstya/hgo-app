@@ -16,8 +16,16 @@ export const importService = {
         return res.data
     },
 
-    getTemplate: () => {
-        window.open(`${import.meta.env.VITE_API_URL || ''}/api/import/template`, '_blank')
+    getTemplate: async () => {
+        const res = await api.get('/api/import/template', { responseType: 'blob' })
+        const url = window.URL.createObjectURL(new Blob([res.data]))
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', 'template_import_pasien.xlsx')
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.URL.revokeObjectURL(url)
     },
 
     history: async (params) => {

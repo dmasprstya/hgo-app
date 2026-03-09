@@ -215,7 +215,11 @@ async def update_patient(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Patient).where(Patient.id == patient_id))
+    result = await db.execute(
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.id == patient_id)
+    )
     patient = result.scalar_one_or_none()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
@@ -230,7 +234,14 @@ async def update_patient(
     await _save_criteria_values(db, patient.id, update_data, criteria_map)
 
     await db.commit()
-    await db.refresh(patient)
+
+    # Re-fetch with eager load so PatientOut serialization works
+    result = await db.execute(
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.id == patient_id)
+    )
+    patient = result.scalar_one_or_none()
     return patient
 
 
@@ -242,7 +253,9 @@ async def archive_patient(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Patient).where(Patient.id == patient_id, Patient.deleted_at.is_(None))
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.id == patient_id, Patient.deleted_at.is_(None))
     )
     patient = result.scalar_one_or_none()
     if not patient:
@@ -251,7 +264,14 @@ async def archive_patient(
     patient.status = "archived"
     patient.archived_at = datetime.now(timezone.utc)
     await db.commit()
-    await db.refresh(patient)
+
+    # Re-fetch with eager load so PatientOut serialization works
+    result = await db.execute(
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.id == patient_id)
+    )
+    patient = result.scalar_one_or_none()
     return patient
 
 
@@ -263,7 +283,9 @@ async def restore_patient(
     current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(
-        select(Patient).where(Patient.id == patient_id, Patient.deleted_at.is_(None))
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.id == patient_id, Patient.deleted_at.is_(None))
     )
     patient = result.scalar_one_or_none()
     if not patient:
@@ -272,7 +294,14 @@ async def restore_patient(
     patient.status = "active"
     patient.archived_at = None
     await db.commit()
-    await db.refresh(patient)
+
+    # Re-fetch with eager load so PatientOut serialization works
+    result = await db.execute(
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.id == patient_id)
+    )
+    patient = result.scalar_one_or_none()
     return patient
 
 

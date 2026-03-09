@@ -154,7 +154,22 @@ export default function Patients() {
 
     // ── Form handlers ────────────────────────────────────────────────────────
     const openCreate = () => { setForm(FORM_DEFAULTS); setModalType('create') }
-    const openEdit = (p) => { setSelected(p); setForm({ name: p.name, age: p.age, gender: p.gender, ...FORM_DEFAULTS }); setModalType('edit') }
+    const openEdit = (p) => {
+        setSelected(p)
+        setForm({
+            ...FORM_DEFAULTS,
+            name: p.name,
+            age: p.age,
+            gender: p.gender,
+            ...(p.insurance && { insurance: p.insurance }),
+            ...(p.surgery && { surgery: p.surgery }),
+            ...(p.room_class && { room_class: p.room_class }),
+            ...(p.admission_type && { admission_type: p.admission_type }),
+            ...(p.severity_score && { severity_score: p.severity_score }),
+            ...(p.test_result && { test_result: p.test_result }),
+        })
+        setModalType('edit')
+    }
     const openDelete = (p) => { setSelected(p); setModalType('delete') }
 
     const handleSubmit = (e) => {
