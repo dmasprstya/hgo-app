@@ -124,6 +124,146 @@
   .sidebar-link.active {
     @apply text-white bg-primary-600/30 border border-primary-500/30;
   }
+
+  /* ── Tab Toggle ──────────────────────────────────────────────── */
+  .tab-group {
+    @apply inline-flex rounded-xl p-1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .tab-btn {
+    @apply px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer;
+    color: #9ca3af;
+  }
+
+  .tab-btn:hover {
+    color: #e5e7eb;
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .tab-btn.active {
+    @apply text-white shadow-lg;
+    background: rgba(99, 102, 241, 0.35);
+    border: 1px solid rgba(99, 102, 241, 0.4);
+  }
+
+  /* ── Custom Checkbox ─────────────────────────────────────────── */
+  .custom-checkbox {
+    @apply appearance-none w-4 h-4 rounded border cursor-pointer transition-all duration-150;
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+  }
+
+  .custom-checkbox:hover {
+    border-color: rgba(99, 102, 241, 0.6);
+    background: rgba(99, 102, 241, 0.1);
+  }
+
+  .custom-checkbox:checked {
+    @apply border-transparent;
+    background-color: #6366f1;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='20 6 9 17 4 12'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 10px;
+  }
+
+  .custom-checkbox:focus {
+    @apply outline-none ring-2 ring-primary-500/30 ring-offset-1 ring-offset-gray-950;
+  }
+
+  /* ── Floating Action Bar ─────────────────────────────────────── */
+  .floating-action-bar {
+    @apply fixed bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 px-6 py-3 rounded-2xl shadow-2xl z-50;
+    background: rgba(15, 15, 30, 0.85);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    animation: fab-enter 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @keyframes fab-enter {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(20px) scale(0.95);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0) scale(1);
+    }
+  }
+
+  .fab-count {
+    @apply text-sm font-semibold text-primary-300 whitespace-nowrap;
+  }
+
+  .fab-divider {
+    @apply w-px h-6;
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  /* ── Archived Row ────────────────────────────────────────────── */
+  table.data-table tbody tr.row-archived td {
+    @apply text-gray-500;
+  }
+
+  /* ── Toast ───────────────────────────────────────────────────── */
+  .toast-container {
+    @apply fixed bottom-6 right-6 flex flex-col gap-2 z-[60];
+    pointer-events: none;
+  }
+
+  .toast {
+    @apply flex items-center gap-3 px-5 py-3 rounded-xl shadow-2xl text-sm font-medium transition-all duration-300;
+    pointer-events: auto;
+    backdrop-filter: blur(16px);
+    min-width: 280px;
+    transform: translateX(120%);
+    opacity: 0;
+  }
+
+  .toast-enter {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  .toast-exit {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+
+  .toast-success {
+    background: rgba(16, 185, 129, 0.15);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #6ee7b7;
+  }
+
+  .toast-error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+  }
+
+  .toast-icon {
+    @apply flex-shrink-0 w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold;
+  }
+
+  .toast-success .toast-icon {
+    background: rgba(16, 185, 129, 0.25);
+  }
+
+  .toast-error .toast-icon {
+    background: rgba(239, 68, 68, 0.25);
+  }
+
+  .toast-msg {
+    @apply flex-1;
+  }
+
+  .toast-close {
+    @apply flex-shrink-0 text-white/40 hover:text-white/80 cursor-pointer transition-colors p-0.5;
+  }
 }
 
 @layer utilities {

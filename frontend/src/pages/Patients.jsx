@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { patientService } from '../services/patientService'
 import { Button } from '../components/ui/Button'
@@ -6,6 +6,7 @@ import { Badge } from '../components/ui/Badge'
 import { Modal } from '../components/ui/Modal'
 import { Pagination } from '../components/ui/Pagination'
 import { Spinner } from '../components/ui/Spinner'
+import { ToastContainer, useToast } from '../components/ui/Toast'
 
 const FORM_DEFAULTS = {
     name: '', age: '', gender: 'male', insurance: 'independent',
@@ -25,33 +26,133 @@ const SELECT_OPTS = {
 
 export default function Patients() {
     const qc = useQueryClient()
+    const { toasts, addToast, removeToast } = useToast()
+
+    // ── State ────────────────────────────────────────────────────────────────
+    const [tab, setTab] = useState('active') // 'active' | 'archived'
     const [page, setPage] = useState(1)
     const [search, setSearch] = useState('')
-    const [modalType, setModalType] = useState(null) // 'create' | 'edit' | 'delete'
+    const [modalType, setModalType] = useState(null)
     const [selected, setSelected] = useState(null)
     const [form, setForm] = useState(FORM_DEFAULTS)
 
+    // Selection state
+    const [checkedIds, setCheckedIds] = useState(new Set())
+    const lastCheckedIdx = useRef(null)
+
+    // Delete confirmation for bulk
+    const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false)
+
+    // ── Queries ──────────────────────────────────────────────────────────────
+    const queryKey = tab === 'active' ? ['patients', page, search] : ['patients-archived', page, search]
+    const queryFn = tab === 'active'
+        ? () => patientService.list({ page, limit: 50, search })
+        : () => patientService.listArchived({ page, limit: 50, search })
+
     const { data, isLoading } = useQuery({
-        queryKey: ['patients', page, search],
-        queryFn: () => patientService.list({ page, limit: 50, search }),
+        queryKey,
+        queryFn,
         keepPreviousData: true,
     })
 
+    const patients = data?.data || []
+
+    // ── Reset on tab change ──────────────────────────────────────────────────
+    const switchTab = (t) => {
+        setTab(t)
+        setPage(1)
+        setSearch('')
+        setCheckedIds(new Set())
+        lastCheckedIdx.current = null
+    }
+
+    // ── Checkbox helpers ─────────────────────────────────────────────────────
+    const isAllSelected = patients.length > 0 && patients.every(p => checkedIds.has(p.id))
+
+    const toggleAll = () => {
+        if (isAllSelected) {
+            setCheckedIds(new Set())
+        } else {
+            setCheckedIds(new Set(patients.map(p => p.id)))
+        }
+        lastCheckedIdx.current = null
+    }
+
+    const toggleRow = (id, index, e) => {
+        setCheckedIds(prev => {
+            const next = new Set(prev)
+            if (e.shiftKey && lastCheckedIdx.current !== null) {
+                const start = Math.min(lastCheckedIdx.current, index)
+                const end = Math.max(lastCheckedIdx.current, index)
+                for (let i = start; i <= end; i++) {
+                    next.add(patients[i].id)
+                }
+            } else {
+                if (next.has(id)) next.delete(id)
+                else next.add(id)
+            }
+            return next
+        })
+        lastCheckedIdx.current = index
+    }
+
+    const clearSelection = () => {
+        setCheckedIds(new Set())
+        lastCheckedIdx.current = null
+    }
+
+    // ── Mutations ────────────────────────────────────────────────────────────
+    const invalidateAll = () => {
+        qc.invalidateQueries(['patients'])
+        qc.invalidateQueries(['patients-archived'])
+    }
+
     const createMut = useMutation({
         mutationFn: (d) => patientService.create(d),
-        onSuccess: () => { qc.invalidateQueries(['patients']); setModalType(null) },
+        onSuccess: () => { invalidateAll(); setModalType(null); addToast('Patient created successfully') },
+        onError: (e) => addToast(e?.response?.data?.detail || 'Failed to create patient', 'error'),
     })
 
     const updateMut = useMutation({
         mutationFn: ({ id, d }) => patientService.update(id, d),
-        onSuccess: () => { qc.invalidateQueries(['patients']); setModalType(null) },
+        onSuccess: () => { invalidateAll(); setModalType(null); addToast('Patient updated successfully') },
+        onError: (e) => addToast(e?.response?.data?.detail || 'Failed to update patient', 'error'),
     })
 
     const deleteMut = useMutation({
         mutationFn: (id) => patientService.delete(id),
-        onSuccess: () => { qc.invalidateQueries(['patients']); setModalType(null) },
+        onSuccess: () => { invalidateAll(); setModalType(null); addToast('Patient deleted') },
+        onError: (e) => addToast(e?.response?.data?.detail || 'Failed to delete patient', 'error'),
     })
 
+    const archiveMut = useMutation({
+        mutationFn: (id) => patientService.archive(id),
+        onSuccess: () => { invalidateAll(); addToast('Patient archived') },
+        onError: (e) => addToast(e?.response?.data?.detail || 'Failed to archive patient', 'error'),
+    })
+
+    const restoreMut = useMutation({
+        mutationFn: (id) => patientService.restore(id),
+        onSuccess: () => { invalidateAll(); addToast('Patient restored') },
+        onError: (e) => addToast(e?.response?.data?.detail || 'Failed to restore patient', 'error'),
+    })
+
+    const bulkMut = useMutation({
+        mutationFn: ({ ids, action }) => patientService.bulkAction(ids, action),
+        onSuccess: (res, vars) => {
+            invalidateAll()
+            clearSelection()
+            setBulkDeleteConfirm(false)
+            const verb = vars.action === 'archive' ? 'archived' : 'deleted'
+            addToast(`${res.affected} patient(s) ${verb}`)
+        },
+        onError: (e) => {
+            setBulkDeleteConfirm(false)
+            addToast(e?.response?.data?.detail || 'Bulk action failed', 'error')
+        },
+    })
+
+    // ── Form handlers ────────────────────────────────────────────────────────
     const openCreate = () => { setForm(FORM_DEFAULTS); setModalType('create') }
     const openEdit = (p) => { setSelected(p); setForm({ name: p.name, age: p.age, gender: p.gender, ...FORM_DEFAULTS }); setModalType('edit') }
     const openDelete = (p) => { setSelected(p); setModalType('delete') }
@@ -62,23 +163,41 @@ export default function Patients() {
         else updateMut.mutate({ id: selected.id, d: { ...form, age: Number(form.age) } })
     }
 
-        return (
+    // ── Bulk actions ─────────────────────────────────────────────────────────
+    const selectedIds = [...checkedIds]
+
+    const handleBulkArchive = () => bulkMut.mutate({ ids: selectedIds, action: 'archive' })
+    const handleBulkDelete = () => setBulkDeleteConfirm(true)
+    const confirmBulkDelete = () => bulkMut.mutate({ ids: selectedIds, action: 'delete' })
+
+    return (
         <div className="space-y-4 animate-fade-in">
+            {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-white">Patients</h1>
                     <p className="text-gray-400 text-sm">Manage patient records and HGO results</p>
                 </div>
-                <Button onClick={openCreate}>+ Add Patient</Button>
+                {tab === 'active' && <Button onClick={openCreate}>+ Add Patient</Button>}
             </div>
 
-            {/* Search */}
-            <input
-                className="input max-w-sm"
-                placeholder="Search by name or patient code…"
-                value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(1) }}
-            />
+            {/* Tabs + Search */}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="tab-group">
+                    <button className={`tab-btn ${tab === 'active' ? 'active' : ''}`} onClick={() => switchTab('active')}>
+                        Active
+                    </button>
+                    <button className={`tab-btn ${tab === 'archived' ? 'active' : ''}`} onClick={() => switchTab('archived')}>
+                        Archived
+                    </button>
+                </div>
+                <input
+                    className="input max-w-sm"
+                    placeholder="Search by name or patient code…"
+                    value={search}
+                    onChange={(e) => { setSearch(e.target.value); setPage(1) }}
+                />
+            </div>
 
             {/* Table */}
             <div className="card p-0 overflow-hidden">
@@ -89,13 +208,31 @@ export default function Patients() {
                         <table className="data-table">
                             <thead>
                                 <tr>
+                                    <th style={{ width: 40 }}>
+                                        <input
+                                            type="checkbox"
+                                            className="custom-checkbox"
+                                            checked={isAllSelected}
+                                            onChange={toggleAll}
+                                        />
+                                    </th>
                                     <th>Code</th><th>Name</th><th>Age</th><th>Gender</th>
-                                    <th>Output</th><th>HGOd Index</th><th>Rank</th><th>Priority</th><th>Actions</th>
+                                    <th>Output</th><th>HGOd Index</th><th>Rank</th><th>Priority</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {data?.data?.map((p) => (
-                                    <tr key={p.id}>
+                                {patients.map((p, idx) => (
+                                    <tr key={p.id} className={tab === 'archived' ? 'row-archived' : ''}>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                className="custom-checkbox"
+                                                checked={checkedIds.has(p.id)}
+                                                onChange={(e) => toggleRow(p.id, idx, e)}
+                                                onClick={(e) => e.stopPropagation()}
+                                            />
+                                        </td>
                                         <td className="font-mono text-xs text-primary-400">{p.patient_code}</td>
                                         <td className="font-medium text-white">{p.name}</td>
                                         <td>{p.age}</td>
@@ -106,12 +243,28 @@ export default function Patients() {
                                         <td>{p.hgo_result ? <Badge level={['Critical', 'High', 'Medium', 'Low'][Math.floor((p.hgo_result.rank - 1) / Math.ceil(data?.meta?.total / 4))] || 'Low'} /> : '—'}</td>
                                         <td>
                                             <div className="flex gap-2">
-                                                <button onClick={() => openEdit(p)} className="text-xs text-primary-400 hover:text-primary-300">Edit</button>
-                                                <button onClick={() => openDelete(p)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
+                                                {tab === 'active' ? (
+                                                    <>
+                                                        <button onClick={() => openEdit(p)} className="text-xs text-primary-400 hover:text-primary-300">Edit</button>
+                                                        <button onClick={() => archiveMut.mutate(p.id)} className="text-xs text-yellow-400 hover:text-yellow-300" disabled={archiveMut.isPending}>Archive</button>
+                                                        <button onClick={() => openDelete(p)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
+                                                    </>
+                                                ) : (
+                                                    <button onClick={() => restoreMut.mutate(p.id)} className="text-xs text-emerald-400 hover:text-emerald-300" disabled={restoreMut.isPending}>
+                                                        ↺ Restore
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
                                 ))}
+                                {patients.length === 0 && (
+                                    <tr>
+                                        <td colSpan={10} className="text-center py-8 text-gray-500">
+                                            {tab === 'archived' ? 'No archived patients' : 'No patients found'}
+                                        </td>
+                                    </tr>
+                                )}
                             </tbody>
                         </table>
                     </div>
@@ -125,7 +278,43 @@ export default function Patients() {
                 </div>
             )}
 
-            {/* Create / Edit Modal */}
+            {/* ── Floating Action Bar ─────────────────────────────────────── */}
+            {checkedIds.size > 0 && (
+                <div className="floating-action-bar">
+                    <span className="fab-count">{checkedIds.size} patient{checkedIds.size > 1 ? 's' : ''} selected</span>
+                    <div className="fab-divider" />
+                    {tab === 'active' && (
+                        <Button size="sm" variant="secondary" onClick={handleBulkArchive} disabled={bulkMut.isPending}>
+                            Archive
+                        </Button>
+                    )}
+                    <Button size="sm" variant="danger" onClick={handleBulkDelete} disabled={bulkMut.isPending}>
+                        Delete
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={clearSelection}>
+                        Deselect
+                    </Button>
+                </div>
+            )}
+
+            {/* ── Bulk Delete Confirmation Modal ──────────────────────────── */}
+            <Modal
+                open={bulkDeleteConfirm}
+                onClose={() => setBulkDeleteConfirm(false)}
+                title="Delete Selected Patients"
+                footer={
+                    <>
+                        <Button variant="secondary" onClick={() => setBulkDeleteConfirm(false)}>Cancel</Button>
+                        <Button variant="danger" onClick={confirmBulkDelete} disabled={bulkMut.isPending}>
+                            {bulkMut.isPending ? 'Deleting…' : `Delete ${checkedIds.size} patient${checkedIds.size > 1 ? 's' : ''}`}
+                        </Button>
+                    </>
+                }
+            >
+                <p>Are you sure you want to delete <strong className="text-white">{checkedIds.size} patient{checkedIds.size > 1 ? 's' : ''}</strong>? They will be soft-deleted and hidden from all views.</p>
+            </Modal>
+
+            {/* ── Create / Edit Modal ─────────────────────────────────────── */}
             <Modal
                 open={modalType === 'create' || modalType === 'edit'}
                 onClose={() => setModalType(null)}
@@ -159,7 +348,7 @@ export default function Patients() {
                 </form>
             </Modal>
 
-            {/* Delete Modal */}
+            {/* ── Single Delete Modal ─────────────────────────────────────── */}
             <Modal
                 open={modalType === 'delete'}
                 onClose={() => setModalType(null)}
@@ -173,8 +362,11 @@ export default function Patients() {
                     </>
                 }
             >
-                <p>Are you sure you want to delete <strong className="text-white">{selected?.name}</strong>? This cannot be undone.</p>
+                <p>Are you sure you want to delete <strong className="text-white">{selected?.name}</strong>? The record will be soft-deleted.</p>
             </Modal>
+
+            {/* ── Toasts ──────────────────────────────────────────────────── */}
+            <ToastContainer toasts={toasts} removeToast={removeToast} />
         </div>
     )
 }

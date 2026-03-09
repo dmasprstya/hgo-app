@@ -5,6 +5,10 @@ export const patientService = {
         const res = await api.get('/api/patients', { params })
         return res.data
     },
+    listArchived: async (params) => {
+        const res = await api.get('/api/patients/archived', { params })
+        return res.data
+    },
     get: async (id) => {
         const res = await api.get(`/api/patients/${id}`)
         return res.data
@@ -19,5 +23,17 @@ export const patientService = {
     },
     delete: async (id) => {
         await api.delete(`/api/patients/${id}`)
+    },
+    archive: async (id) => {
+        const res = await api.patch(`/api/patients/${id}/archive`)
+        return res.data
+    },
+    restore: async (id) => {
+        const res = await api.patch(`/api/patients/${id}/restore`)
+        return res.data
+    },
+    bulkAction: async (ids, action) => {
+        const res = await api.patch('/api/patients/bulk', { ids, action })
+        return res.data
     },
 }

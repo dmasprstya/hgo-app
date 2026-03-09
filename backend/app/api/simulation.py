@@ -40,7 +40,9 @@ async def run_simulation(
     current_user: User = Depends(get_current_user),
 ):
     # Count patients
-    count_result = await db.execute(select(func.count()).select_from(Patient))
+    count_result = await db.execute(
+        select(func.count()).select_from(Patient).where(Patient.deleted_at.is_(None))
+    )
     total = count_result.scalar() or 0
     if total == 0:
         raise HTTPException(400, "No patients found. Import data first.")

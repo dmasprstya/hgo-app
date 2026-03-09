@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Literal
 from datetime import datetime
 
 
@@ -46,7 +46,10 @@ class PatientOut(BaseModel):
     name: str
     age: int
     gender: str
+    status: str
     created_at: datetime
+    archived_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
     hgo_result: Optional[HGOResultOut] = None
 
     model_config = {"from_attributes": True}
@@ -56,3 +59,13 @@ class PaginatedPatients(BaseModel):
     status: str = "success"
     data: list[PatientOut]
     meta: dict
+
+
+class BulkActionRequest(BaseModel):
+    ids: list[str] = Field(..., min_length=1)
+    action: Literal["archive", "delete"]
+
+
+class BulkActionResponse(BaseModel):
+    success: bool
+    affected: int

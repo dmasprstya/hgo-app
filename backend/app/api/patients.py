@@ -1,5 +1,6 @@
 import uuid
 from typing import Optional
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, or_
@@ -10,7 +11,10 @@ from app.models.patient import Patient, PatientCriteriaValue
 from app.models.criteria import Criteria
 from app.models.result import HGOResult
 from app.models.user import User
-from app.schemas.patient import PatientCreate, PatientUpdate, PatientOut, PaginatedPatients
+from app.schemas.patient import (
+    PatientCreate, PatientUpdate, PatientOut,
+    PaginatedPatients, BulkActionRequest, BulkActionResponse,
+)
 from app.api.auth import get_current_user
 from app.utils.hgo import convert_to_crisp, CRITERIA_ORDER
 
@@ -54,6 +58,7 @@ async def _save_criteria_values(
         db.add(pcv)
 
 
+# ── List active patients ─────────────────────────────────────────────────────
 @router.get("", response_model=PaginatedPatients)
 async def list_patients(
     page: int = Query(1, ge=1),
@@ -63,7 +68,11 @@ async def list_patients(
     current_user: User = Depends(get_current_user),
 ):
     offset = (page - 1) * limit
-    query = select(Patient).options(selectinload(Patient.hgo_result))
+    query = (
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.deleted_at.is_(None), Patient.status == "active")
+    )
 
     if search:
         query = query.where(
@@ -86,6 +95,77 @@ async def list_patients(
     )
 
 
+# ── List archived patients ───────────────────────────────────────────────────
+@router.get("/archived", response_model=PaginatedPatients)
+async def list_archived_patients(
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=200),
+    search: Optional[str] = None,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    offset = (page - 1) * limit
+    query = (
+        select(Patient)
+        .options(selectinload(Patient.hgo_result))
+        .where(Patient.deleted_at.is_(None), Patient.status == "archived")
+    )
+
+    if search:
+        query = query.where(
+            or_(
+                Patient.name.ilike(f"%{search}%"),
+                Patient.patient_code.ilike(f"%{search}%"),
+            )
+        )
+
+    count_q = select(func.count()).select_from(query.subquery())
+    total = (await db.execute(count_q)).scalar()
+
+    query = query.offset(offset).limit(limit).order_by(Patient.created_at.desc())
+    result = await db.execute(query)
+    patients = result.scalars().all()
+
+    return PaginatedPatients(
+        data=patients,
+        meta={"page": page, "limit": limit, "total": total, "total_pages": -(-total // limit) if total else 0},
+    )
+
+
+# ── Bulk action (archive / soft-delete) ──────────────────────────────────────
+@router.patch("/bulk", response_model=BulkActionResponse)
+async def bulk_action(
+    body: BulkActionRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    # Validate all IDs exist
+    result = await db.execute(
+        select(Patient).where(Patient.id.in_(body.ids), Patient.deleted_at.is_(None))
+    )
+    patients = result.scalars().all()
+
+    if len(patients) != len(body.ids):
+        found_ids = {p.id for p in patients}
+        missing = [pid for pid in body.ids if pid not in found_ids]
+        raise HTTPException(
+            status_code=404,
+            detail=f"Patients not found: {', '.join(missing)}",
+        )
+
+    now = datetime.now(timezone.utc)
+    for patient in patients:
+        if body.action == "archive":
+            patient.status = "archived"
+            patient.archived_at = now
+        elif body.action == "delete":
+            patient.deleted_at = now
+
+    await db.commit()
+    return BulkActionResponse(success=True, affected=len(patients))
+
+
+# ── Create patient ───────────────────────────────────────────────────────────
 @router.post("", response_model=PatientOut, status_code=201)
 async def create_patient(
     body: PatientCreate,
@@ -111,6 +191,7 @@ async def create_patient(
     return patient
 
 
+# ── Get single patient ───────────────────────────────────────────────────────
 @router.get("/{patient_id}", response_model=PatientOut)
 async def get_patient(
     patient_id: str,
@@ -126,6 +207,7 @@ async def get_patient(
     return patient
 
 
+# ── Update patient ───────────────────────────────────────────────────────────
 @router.put("/{patient_id}", response_model=PatientOut)
 async def update_patient(
     patient_id: str,
@@ -152,15 +234,60 @@ async def update_patient(
     return patient
 
 
+# ── Archive patient ──────────────────────────────────────────────────────────
+@router.patch("/{patient_id}/archive", response_model=PatientOut)
+async def archive_patient(
+    patient_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Patient).where(Patient.id == patient_id, Patient.deleted_at.is_(None))
+    )
+    patient = result.scalar_one_or_none()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    patient.status = "archived"
+    patient.archived_at = datetime.now(timezone.utc)
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
+# ── Restore patient ──────────────────────────────────────────────────────────
+@router.patch("/{patient_id}/restore", response_model=PatientOut)
+async def restore_patient(
+    patient_id: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(Patient).where(Patient.id == patient_id, Patient.deleted_at.is_(None))
+    )
+    patient = result.scalar_one_or_none()
+    if not patient:
+        raise HTTPException(status_code=404, detail="Patient not found")
+
+    patient.status = "active"
+    patient.archived_at = None
+    await db.commit()
+    await db.refresh(patient)
+    return patient
+
+
+# ── Soft delete patient ──────────────────────────────────────────────────────
 @router.delete("/{patient_id}", status_code=204)
 async def delete_patient(
     patient_id: str,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Patient).where(Patient.id == patient_id))
+    result = await db.execute(
+        select(Patient).where(Patient.id == patient_id, Patient.deleted_at.is_(None))
+    )
     patient = result.scalar_one_or_none()
     if not patient:
         raise HTTPException(status_code=404, detail="Patient not found")
-    await db.delete(patient)
+    patient.deleted_at = datetime.now(timezone.utc)
     await db.commit()

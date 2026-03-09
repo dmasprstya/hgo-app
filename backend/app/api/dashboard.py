@@ -27,7 +27,9 @@ async def dashboard_summary(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    total_patients = (await db.execute(select(func.count()).select_from(Patient))).scalar() or 0
+    total_patients = (await db.execute(
+        select(func.count()).select_from(Patient).where(Patient.deleted_at.is_(None))
+    )).scalar() or 0
 
     last_session = (
         await db.execute(
