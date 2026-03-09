@@ -65,7 +65,9 @@ def process_import(self: Task, job_id: str, file_path: str):
     try:
         ext = file_path.rsplit(".", 1)[-1].lower()
         if ext in ("xlsx", "xls"):
-            df_iter = pd.read_excel(file_path, chunksize=500)
+            # read_excel doesn't support chunksize; read all then chunk manually
+            full_df = pd.read_excel(file_path)
+            df_iter = (full_df.iloc[i:i + 500] for i in range(0, len(full_df), 500))
         else:
             df_iter = pd.read_csv(file_path, chunksize=500)
 
