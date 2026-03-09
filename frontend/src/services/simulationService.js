@@ -16,11 +16,15 @@ export const simulationService = {
         return res.data
     },
 
-    export: (format = 'xlsx') => {
-        const token = api.defaults.headers.common?.Authorization
-        window.open(
-            `${import.meta.env.VITE_API_URL || ''}/api/simulation/export?format=${format}`,
-            '_blank'
-        )
+    export: async (format = 'xlsx') => {
+        const res = await api.get(`/api/simulation/export?format=${format}`, { responseType: 'blob' })
+        const url = window.URL.createObjectURL(new Blob([res.data]))
+        const link = document.createElement('a')
+        link.href = url
+        link.setAttribute('download', `hasil_simulasi.${format}`)
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        window.URL.revokeObjectURL(url)
     },
 }
