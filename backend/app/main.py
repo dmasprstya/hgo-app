@@ -39,6 +39,15 @@ app.include_router(simulation.router, prefix="/api/simulation", tags=["simulatio
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["dashboard"])
 
 
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "message": "SPK HGO Discovery API is running",
+        "environment": settings.ENVIRONMENT
+    }
+
+
 @app.get("/health", tags=["system"])
 async def health():
     from app.db.session import engine

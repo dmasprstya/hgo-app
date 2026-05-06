@@ -55,7 +55,7 @@ async def login(
         value=refresh_token,
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",
         max_age=7 * 24 * 3600,
         path="/api/auth/refresh",
     )
@@ -92,7 +92,7 @@ async def refresh(
         value=new_refresh,
         httponly=True,
         secure=True,
-        samesite="lax",
+        samesite="none",
         max_age=7 * 24 * 3600,
         path="/api/auth/refresh",
     )
