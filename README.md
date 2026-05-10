@@ -1,263 +1,161 @@
-# SPK HGO Discovery 🏥
+# HGO Discovery: Smart BI-Based DSS
 
-Sistem Pendukung Keputusan (SPK) untuk prioritas pasien menggunakan algoritma **Honey Badger Optimization (HGO)**. Dibangun dengan FastAPI + React, di-deploy di Railway (backend) dan Vercel (frontend).
+**HGO Discovery** adalah Sistem Pendukung Keputusan (SPK) cerdas berbasis Business Intelligence yang dirancang untuk menentukan prioritas pelayanan pasien. Aplikasi ini mengimplementasikan algoritma **HGO (Hierarchy, Governance, Outlook)** yang terinspirasi dari pola persistensi dan efisiensi *Honey Badger Optimization*.
 
-[![Backend](https://img.shields.io/badge/Backend-Railway-blueviolet)](https://hgo-discovery-production.up.railway.app)
-[![Frontend](https://img.shields.io/badge/Frontend-Vercel-black)](https://hgo-discovery.vercel.app)
-
----
-
-## 📐 Arsitektur
-
-```
-frontend (React + Vite)          backend (FastAPI + Python)
-     │  Vercel                         │  Railway
-     │                                 │
-     │◄─── HTTPS / REST API ──────────►│
-                                       │
-                              ┌────────┴────────┐
-                              │                 │
-                         Supabase         Upstash Redis
-                        (PostgreSQL)      (Celery broker)
-```
-
-**Tech Stack:**
-
-| Layer     | Teknologi                                         |
-|-----------|---------------------------------------------------|
-| Frontend  | React 18, Vite, Zustand, Axios, Recharts          |
-| Backend   | FastAPI, SQLAlchemy 2 (async), Alembic, Celery    |
-| Database  | PostgreSQL via Supabase (Session Pooler port 5432)|
-| Cache/MQ  | Redis via Upstash (rediss://)                     |
-| Auth      | JWT (access token 15 min + httpOnly refresh cookie 7 hari) |
-| Algorithm | HGO — Honey Badger Optimization                   |
+![HGO Dashboard Preview](https://img.shields.io/badge/Status-Active-success?style=for-the-badge)
+![Tech Stack](https://img.shields.io/badge/Stack-FastAPI%20%7C%20React%20%7C%20MySQL-blue?style=for-the-badge)
+![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)
 
 ---
 
-## 🚀 Memulai (Development Lokal)
+## Arsitektur Sistem
 
-### Prasyarat
+Sistem ini menggunakan arsitektur modern yang memisahkan antara *Core Engine* (Backend), *Interactive Dashboard* (Frontend), dan *Background Processing* (Worker).
 
-- Python 3.12+
-- Node.js 18+
-- PostgreSQL lokal **atau** koneksi ke Supabase
-
-### 1. Clone & setup backend
-
-```bash
-git clone https://github.com/dmasprstya/hgo-discovery.git
-cd hgo-discovery/backend
-
-# Buat virtual environment
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # Linux/Mac
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Salin dan isi environment variables
-cp .env.example .env
+```mermaid
+graph LR
+    User((User)) <--> Frontend[Frontend: React + Vite]
+    Frontend <--> Backend[Backend: FastAPI]
+    Backend <--> MySQL[(Database: MySQL)]
+    Backend <--> Redis[Cache/Broker: Redis]
+    Redis <--> Worker[Worker: Celery]
+    Worker <--> MySQL
 ```
 
-Edit `.env`:
+### Tech Stack Utama:
+| Layer | Teknologi | Peran |
+| :--- | :--- | :--- |
+| **Frontend** | React 18, Zustand, TailwindCSS, Recharts | Antarmuka dashboard interaktif & state management. |
+| **Backend** | FastAPI, SQLAlchemy 2.0 (Async), Alembic | RESTful API dengan performa tinggi & asinkron. |
+| **Database** | MySQL 8.0 | Penyimpanan data pasien, kriteria, dan hasil ranking. |
+| **Worker** | Celery + Redis | Pemrosesan tugas berat (Import Excel & Kalkulasi Masif). |
+| **DevOps** | Docker & Docker Compose | Kontainerisasi untuk kemudahan deployment lokal. |
 
-```env
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost/spk_hgo
-REDIS_URL=redis://localhost:6379
-SECRET_KEY=your-secret-key-min-32-chars
-CORS_ORIGINS=http://localhost:5173
-ENVIRONMENT=development
-```
+---
 
-### 2. Migrasi database
+## Inti Algoritma (Agentic Core)
 
+Aplikasi ini tidak hanya sekadar kalkulator, tetapi menggunakan pendekatan **Agentic** yang mendefinisikan peran-peran cerdas dalam pipeline HGO:
+
+1.  **Hierarchy Agent (H):** Melakukan pemetaan data kualitatif menjadi nilai *crisp*.
+2.  **Governance Agent (G):** Melakukan normalisasi data (Min-Max) berdasarkan tipe kriteria.
+3.  **Outlook Agent (O):** Menghitung **HGOd Index** dan menentukan ranking final.
+
+> [!NOTE]
+> Detail teknis mengenai agen ini dapat dilihat pada file [agents.md](file:///d:/Project/Aplikasi%20SPK/hgo-app/agents.md).
+
+---
+
+## Memulai (Deployment Lokal)
+
+### Opsi 1: Menggunakan Docker (Sangat Direkomendasikan)
+Cara tercepat untuk menjalankan seluruh ekosistem (API, DB, Redis, Worker, UI) tanpa instalasi manual.
+
+1.  **Clone Repositori:**
+    ```bash
+    git clone https://github.com/dmasprstya/hgo-app.git
+    cd hgo-app
+    ```
+
+2.  **Setup Environment:**
+    ```powershell
+    cp .env.example .env
+    cp backend/.env.example backend/.env
+    cp frontend/.env.example frontend/.env
+    ```
+
+3.  **Build & Run:**
+    ```bash
+    docker-compose up --build
+    ```
+
+4.  **Akses Aplikasi:**
+    *   **Frontend:** [http://localhost:5173](http://localhost:5173)
+    *   **Backend API:** [http://localhost:8000](http://localhost:8000)
+    *   **API Docs:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+### Opsi 2: Instalasi Manual
+Gunakan opsi ini jika Anda ingin melakukan pengembangan aktif pada salah satu servis.
+
+#### 1. Setup Database
+Buat database bernama `spk_hgo` di MySQL lokal Anda.
+
+#### 2. Setup Backend
 ```bash
 cd backend
+python -m venv .venv
+source .venv/bin/activate  # atau .venv\Scripts\activate di Windows
+pip install -r requirements.txt
 alembic upgrade head
+uvicorn app.main:app --reload
 ```
 
-> Migrasi akan membuat semua tabel dan insert admin user default serta data kriteria.
-
-### 3. Seed data pasien (opsional, ~5-10 menit)
-
+#### 3. Setup Frontend
 ```bash
-python seed_standalone.py
-```
-
-### 4. Jalankan backend
-
-```bash
-uvicorn app.main:app --reload --port 8000
-```
-
-API tersedia di `http://localhost:8000`  
-Docs (Swagger): `http://localhost:8000/docs`
-
-### 5. Setup & jalankan frontend
-
-```bash
-cd ../frontend
+cd frontend
 npm install
-
-# Salin env
-cp .env.example .env
-```
-
-Edit `frontend/.env`:
-
-```env
-VITE_API_URL=http://localhost:8000
-```
-
-```bash
 npm run dev
 ```
 
-Frontend tersedia di `http://localhost:5173`
-
----
-
-## 🔑 Credentials Default
-
-| Field    | Value                 |
-|----------|-----------------------|
-| Email    | `admin@spk-hgo.local` |
-| Password | `Admin@123`           |
-| Role     | `admin`               |
-
-> **Penting:** Ganti password setelah login pertama di production.
-
----
-
-## 📁 Struktur Project
-
-```
-hgo-discovery/
-├── backend/
-│   ├── app/
-│   │   ├── api/             # Route handlers (auth, patients, dashboard, ...)
-│   │   ├── core/            # Config, security, logging, Celery
-│   │   ├── db/              # SQLAlchemy engine & session
-│   │   ├── models/          # ORM models
-│   │   ├── schemas/         # Pydantic schemas
-│   │   ├── tasks/           # Celery background tasks
-│   │   ├── utils/           # HGO algorithm, helpers
-│   │   └── main.py          # FastAPI app entry point
-│   ├── alembic/             # Database migrations
-│   ├── seed.py              # Patient seeder (requires full env)
-│   ├── seed_standalone.py   # Patient seeder (standalone, minimal deps)
-│   ├── create_admin.py      # Script buat/reset admin user
-│   ├── requirements.txt
-│   ├── railway.toml         # Railway deployment config
-│   └── nixpacks.toml
-├── agents.md                # Documentation for system & algorithm agents
-└── frontend/
-    ├── src/
-    │   ├── components/      # UI components
-    │   ├── pages/           # Halaman (Login, Dashboard, Patients, ...)
-    │   ├── services/        # Axios API calls
-    │   ├── store/           # Zustand auth store
-    │   └── hooks/           # Custom React hooks
-    └── vite.config.js
-```
-
----
-
-## 🌐 API Endpoints
-
-| Method | Endpoint                  | Deskripsi                    | Auth |
-|--------|---------------------------|------------------------------|------|
-| GET    | `/health`                 | Health check (db + redis)    | ❌   |
-| POST   | `/api/auth/login`         | Login → set refresh cookie   | ❌   |
-| POST   | `/api/auth/refresh`       | Refresh access token         | 🍪   |
-| POST   | `/api/auth/logout`        | Hapus refresh cookie         | ✅   |
-| GET    | `/api/patients`           | List pasien + HGO ranking    | ✅   |
-| POST   | `/api/import`             | Upload file Excel pasien     | ✅   |
-| GET    | `/api/import/{id}/status` | Status import job            | ✅   |
-| POST   | `/api/simulation`         | Jalankan simulasi HGO        | ✅   |
-| GET    | `/api/dashboard/stats`    | KPI & ringkasan dashboard    | ✅   |
-
----
-
-## ☁️ Deployment
-
-### Backend → Railway
-
-**Environment Variables (Railway):**
-
-```env
-DATABASE_URL=postgresql+asyncpg://postgres.PROJECT_REF:PASSWORD@aws-X.pooler.supabase.com:5432/postgres
-REDIS_URL=rediss://default:TOKEN@HOST:6379
-SECRET_KEY=your-production-secret-key
-ACCESS_TOKEN_EXPIRE_MINUTES=15
-REFRESH_TOKEN_EXPIRE_DAYS=7
-CORS_ORIGINS=https://your-frontend.vercel.app
-ENVIRONMENT=production
-```
-
-> ⚠️ Gunakan **Session Pooler (port 5432)**, bukan Transaction Pooler (port 6543). asyncpg + SQLAlchemy membutuhkan prepared statements yang tidak didukung Transaction Pooler.
-
-**Start Command di Railway:**
-
-```
-alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT
-```
-
-### Frontend → Vercel
-
-**Environment Variables (Vercel):**
-
-```env
-VITE_API_URL=https://your-backend.up.railway.app
-```
-
----
-
-## 🔧 Troubleshooting
-
-### `DuplicatePreparedStatementError`
-Kamu menggunakan Transaction Pooler (port 6543). Ganti ke **Session Pooler (port 5432)** pada `DATABASE_URL`.
-
-### `passlib bcrypt error` / `module 'bcrypt' has no attribute '__about__'`
-Pin bcrypt ke versi lama di `requirements.txt`:
-```
-bcrypt==3.2.2
-```
-
-### Admin user tidak bisa login
-Jalankan script reset password:
+#### 4. Setup Worker (Opsional)
 ```bash
 cd backend
-python create_admin.py
-```
-
-### Seed data kosong
-Jalankan seeder standalone dari lokal:
-```bash
-cd backend
-python seed_standalone.py
+celery -A app.core.celery_app worker --loglevel=info -P solo
 ```
 
 ---
 
-## 🧠 Algoritma HGO
+## Kredensial Default
 
-Kriteria yang digunakan:
+Setelah migrasi selesai, Anda dapat masuk menggunakan akun administrator default:
 
-| Kode | Nama            | Tipe     | Bobot |
-|------|-----------------|----------|-------|
-| Cr1  | Insurance       | Positif  | 0.10  |
-| Cr2  | Surgery         | Negatif  | 0.20  |
-| Cr3  | Room Class      | Positif  | 0.075 |
-| Cr4  | Admission Type  | Positif  | 0.125 |
-| Cr5  | Severity Score  | Positif  | 0.20  |
-| Cr6  | Test Result     | Positif  | 0.15  |
-
-Output: **HGOd Index** (0–1) dan **Ranking** prioritas pasien.
+| Akun | Kredensial |
+| :--- | :--- |
+| **Email** | `admin@spk-hgo.local` |
+| **Password** | `Admin@123` |
+| **Role** | `superuser` |
 
 ---
 
-## 📄 Lisensi
+## Struktur Folder
 
-MIT License — bebas digunakan untuk keperluan akademik dan penelitian.
+```text
+hgo-app/
+├── backend/            # FastAPI + Python Logic
+│   ├── app/            # Core application code
+│   ├── alembic/        # Database migrations
+│   └── Dockerfile      # Backend container config
+├── frontend/           # React + Vite Dashboard
+│   ├── src/            # UI components & logic
+│   └── Dockerfile      # Frontend container config
+├── agents.md           # Dokumentasi logika agen H-G-O
+├── docker-compose.yml  # Orchestration semua servis
+└── README.md           # Dokumentasi utama
+```
+
+---
+
+##  Konfigurasi Kriteria
+
+Secara default, aplikasi menggunakan 6 kriteria utama sesuai studi kasus:
+
+| Kode | Nama Kriteria | Tipe | Bobot |
+| :--- | :--- | :--- | :--- |
+| **Cr1** | Insurance | Benefit (+) | 10% |
+| **Cr2** | Surgery | Cost (-) | 20% |
+| **Cr3** | Room Class | Benefit (+) | 7.5% |
+| **Cr4** | Admission Type | Benefit (+) | 12.5% |
+| **Cr5** | Severity Score | Benefit (+) | 20% |
+| **Cr6** | Test Result | Benefit (+) | 15% |
+
+---
+
+## Lisensi
+
+Proyek ini dilisensikan di bawah **MIT License**. Silakan gunakan untuk keperluan riset dan akademik.
+
+---
+*Dibuat oleh [Dimas Prasetya](https://github.com/dmasprstya)*
+
