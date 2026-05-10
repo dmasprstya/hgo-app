@@ -151,7 +151,7 @@ hgo-discovery/
 │   ├── requirements.txt
 │   ├── railway.toml         # Railway deployment config
 │   └── nixpacks.toml
-│
+├── agents.md                # Documentation for system & algorithm agents
 └── frontend/
     ├── src/
     │   ├── components/      # UI components

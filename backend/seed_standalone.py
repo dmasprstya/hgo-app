@@ -1,10 +1,12 @@
 """
-Standalone seeder — 3310 patients untuk Supabase.
+Standalone seeder — 3310 patients untuk MySQL/Supabase.
 Tidak butuh install full backend deps.
 
 Run dari folder backend/:
-  pip install asyncpg "sqlalchemy[asyncio]" 
-  python seed_standalone.py
+  1. python -m venv .venv
+  2. .venv\Scripts\activate
+  3. pip install aiomysql "sqlalchemy[asyncio]" 
+  4. python seed_standalone.py
 
 Estimasi waktu: 5-15 menit.
 """
@@ -13,18 +15,15 @@ import random
 import asyncio
 import ssl
 import traceback
+import os
 from datetime import datetime, timezone
 
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy import text
 
 # ────────────────────────────────────────────────────────────────
-# DATABASE URL (Session Pooler, port 5432)
-DATABASE_URL = (
-    "postgresql+asyncpg://"
-    "postgres.cmtftlzkzomnzyslbsie:hgospksaw123"
-    "@aws-1-ap-northeast-1.pooler.supabase.com:5432/postgres"
-)
+# DATABASE URL (Default to local MySQL)
+DATABASE_URL = os.getenv("DATABASE_URL", "mysql+aiomysql://root:@localhost:3306/spk_hgo")
 # ────────────────────────────────────────────────────────────────
 
 random.seed(42)
@@ -116,16 +115,18 @@ def run_hgo(patients):
 async def main():
     print("=== SPK HGO Standalone Seeder ===")
 
-    _ssl_ctx = ssl.create_default_context()
-    _ssl_ctx.check_hostname = False
-    _ssl_ctx.verify_mode = ssl.CERT_NONE
+    engine_args = {
+        "echo": False,
+        "pool_size": 5,
+    }
+    
+    if "postgresql" in DATABASE_URL:
+        _ssl_ctx = ssl.create_default_context()
+        _ssl_ctx.check_hostname = False
+        _ssl_ctx.verify_mode = ssl.CERT_NONE
+        engine_args["connect_args"] = {"ssl": _ssl_ctx}
 
-    engine = create_async_engine(
-        DATABASE_URL,
-        echo=False,
-        pool_size=5,
-        connect_args={"ssl": _ssl_ctx},
-    )
+    engine = create_async_engine(DATABASE_URL, **engine_args)
     AsyncSession_ = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     print("Connecting to database...")
@@ -155,21 +156,50 @@ async def main():
             gender = random.choice(["male", "female"])
             pid = str(uuid.uuid4())
 
-            result = await session.execute(
-                text(
-                    "INSERT INTO patients (id, patient_code, name, age, gender, created_at) "
-                    "VALUES (:id, :code, :name, :age, :gender, :now) "
-                    "ON CONFLICT (patient_code) DO NOTHING RETURNING id"
-                ),
-                {"id": pid, "code": code, "name": name, "age": age,
-                 "gender": gender, "now": datetime.now(timezone.utc)},
-            )
-            row = result.fetchone()
-            if not row:
-                skipped += 1
-                continue
-
-            actual_pid = row[0]
+            if "postgresql" in DATABASE_URL:
+                result = await session.execute(
+                    text(
+                        "INSERT INTO patients (id, patient_code, name, age, gender, created_at) "
+                        "VALUES (:id, :code, :name, :age, :gender, :now) "
+                        "ON CONFLICT (patient_code) DO NOTHING RETURNING id"
+                    ),
+                    {"id": pid, "code": code, "name": name, "age": age,
+                     "gender": gender, "now": datetime.now(timezone.utc)},
+                )
+                row = result.fetchone()
+                if not row:
+                    skipped += 1
+                    continue
+                actual_pid = row[0]
+            else:
+                # MySQL approach
+                try:
+                    result = await session.execute(
+                        text(
+                            "INSERT IGNORE INTO patients (id, patient_code, name, age, gender, created_at) "
+                            "VALUES (:id, :code, :name, :age, :gender, :now)"
+                        ),
+                        {"id": pid, "code": code, "name": name, "age": age,
+                         "gender": gender, "now": datetime.now(timezone.utc)},
+                    )
+                    if result.rowcount == 0:
+                        # Row was ignored, fetch the existing ID
+                        res = await session.execute(
+                            text("SELECT id FROM patients WHERE patient_code = :code"),
+                            {"code": code}
+                        )
+                        row = res.fetchone()
+                        if row:
+                            actual_pid = row[0]
+                            skipped += 1
+                        else:
+                            skipped += 1
+                            continue
+                    else:
+                        actual_pid = pid
+                except Exception:
+                    skipped += 1
+                    continue
             cr_data = {}
             for cr_code in CRITERIA_ORDER:
                 val = random.choice(CRITERIA_VALUES[cr_code])
@@ -177,13 +207,14 @@ async def main():
                 crit_id = criteria_map.get(cr_code)
                 if crit_id:
                     crisp = CRISP_MAP[cr_code].get(val, 1)
+                    sql = "INSERT INTO patient_criteria_values (id, patient_id, criteria_id, raw_value, crisp_value) VALUES (:id, :pid, :cid, :raw, :crisp)"
+                    if "postgresql" in DATABASE_URL:
+                        sql += " ON CONFLICT DO NOTHING"
+                    else:
+                        sql = sql.replace("INSERT INTO", "INSERT IGNORE INTO")
+                        
                     await session.execute(
-                        text(
-                            "INSERT INTO patient_criteria_values "
-                            "(id, patient_id, criteria_id, raw_value, crisp_value) "
-                            "VALUES (:id, :pid, :cid, :raw, :crisp) "
-                            "ON CONFLICT DO NOTHING"
-                        ),
+                        text(sql),
                         {"id": str(uuid.uuid4()), "pid": actual_pid,
                          "cid": crit_id, "raw": val, "crisp": crisp},
                     )
@@ -203,18 +234,33 @@ async def main():
             results = run_hgo(patients_for_hgo)
             now = datetime.now(timezone.utc)
             for r in results:
-                await session.execute(
-                    text(
-                        "INSERT INTO hgo_results (id, patient_id, output_score, hgod_index, rank, calculated_at) "
-                        "VALUES (:id, :pid, :out, :hgo, :rank, :now) "
-                        "ON CONFLICT (patient_id) DO UPDATE "
-                        "SET output_score=EXCLUDED.output_score, hgod_index=EXCLUDED.hgod_index, "
-                        "rank=EXCLUDED.rank, calculated_at=EXCLUDED.calculated_at"
-                    ),
-                    {"id": str(uuid.uuid4()), "pid": r["patient_id"],
-                     "out": r["output_score"], "hgo": r["hgod_index"],
-                     "rank": r["rank"], "now": now},
-                )
+                if "postgresql" in DATABASE_URL:
+                    await session.execute(
+                        text(
+                            "INSERT INTO hgo_results (id, patient_id, output_score, hgod_index, rank, calculated_at) "
+                            "VALUES (:id, :pid, :out, :hgo, :rank, :now) "
+                            "ON CONFLICT (patient_id) DO UPDATE "
+                            "SET output_score=EXCLUDED.output_score, hgod_index=EXCLUDED.hgod_index, "
+                            "rank=EXCLUDED.rank, calculated_at=EXCLUDED.calculated_at"
+                        ),
+                        {"id": str(uuid.uuid4()), "pid": r["patient_id"],
+                         "out": r["output_score"], "hgo": r["hgod_index"],
+                         "rank": r["rank"], "now": now},
+                    )
+                else:
+                    # MySQL approach
+                    await session.execute(
+                        text(
+                            "INSERT INTO hgo_results (id, patient_id, output_score, hgod_index, `rank`, calculated_at) "
+                            "VALUES (:id, :pid, :out, :hgo, :rank, :now) "
+                            "ON DUPLICATE KEY UPDATE "
+                            "output_score=VALUES(output_score), hgod_index=VALUES(hgod_index), "
+                            "`rank`=VALUES(`rank`), calculated_at=VALUES(calculated_at)"
+                        ),
+                        {"id": str(uuid.uuid4()), "pid": r["patient_id"],
+                         "out": r["output_score"], "hgo": r["hgod_index"],
+                         "rank": r["rank"], "now": now},
+                    )
             await session.commit()
             print(f"HGO results saved for {len(results)} patients.")
 

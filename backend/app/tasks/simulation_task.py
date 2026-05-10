@@ -12,8 +12,10 @@ def run_hgo_simulation(self: Task, session_id: str):
     from sqlalchemy import create_engine, text
     from sqlalchemy.orm import Session
 
-    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2")
+    sync_url = settings.DATABASE_URL.replace("+asyncpg", "+psycopg2").replace("+aiomysql", "+pymysql")
     engine = create_engine(sync_url)
+
+    is_mysql = "mysql" in sync_url
 
     with Session(engine) as session:
         try:
@@ -74,9 +76,18 @@ def run_hgo_simulation(self: Task, session_id: str):
                 ]
 
                 for row_data in upsert_data:
-                    session.execute(
-                        text(
-                            """
+                    if is_mysql:
+                        sql = """
+                            INSERT INTO hgo_results (id, patient_id, output_score, hgod_index, `rank`, calculated_at)
+                            VALUES (:id, :patient_id, :output_score, :hgod_index, :rank, :calculated_at)
+                            ON DUPLICATE KEY UPDATE
+                                output_score=VALUES(output_score),
+                                hgod_index=VALUES(hgod_index),
+                                `rank`=VALUES(`rank`),
+                                calculated_at=VALUES(calculated_at)
+                        """
+                    else:
+                        sql = """
                             INSERT INTO hgo_results (id, patient_id, output_score, hgod_index, rank, calculated_at)
                             VALUES (:id, :patient_id, :output_score, :hgod_index, :rank, :calculated_at)
                             ON CONFLICT (patient_id) DO UPDATE
@@ -84,10 +95,8 @@ def run_hgo_simulation(self: Task, session_id: str):
                                 hgod_index=EXCLUDED.hgod_index,
                                 rank=EXCLUDED.rank,
                                 calculated_at=EXCLUDED.calculated_at
-                            """
-                        ),
-                        row_data,
-                    )
+                        """
+                    session.execute(text(sql), row_data)
                 
                 processed += len(batch)
                 session.execute(

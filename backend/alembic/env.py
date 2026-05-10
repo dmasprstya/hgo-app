@@ -15,7 +15,7 @@ from app.models import user, patient, criteria, result, audit_log  # noqa
 config = context.config
 config.set_main_option(
     "sqlalchemy.url",
-    settings.DATABASE_URL.replace("+asyncpg", "+psycopg2"),
+    settings.DATABASE_URL.replace("+asyncpg", "+psycopg2").replace("+aiomysql", "+pymysql"),
 )
 
 if config.config_file_name is not None:

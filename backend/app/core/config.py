@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Database
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost/spk_hgo"
+    DATABASE_URL: str = "mysql+aiomysql://root:@localhost/spk_hgo"
 
     # Redis / Celery
     REDIS_URL: str = "redis://localhost:6379"

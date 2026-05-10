@@ -24,7 +24,7 @@ def upgrade() -> None:
         sa.Column("hashed_password", sa.String(255), nullable=False),
         sa.Column("role", sa.Enum("admin", "doctor", "manager", name="userrole"), nullable=False, server_default="doctor"),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("NOW()")),
-        sa.Column("is_active", sa.Boolean, nullable=False, server_default="true"),
+        sa.Column("is_active", sa.Boolean, nullable=False, server_default="1"),
     )
     op.create_index("ix_users_email", "users", ["email"])
 
@@ -120,26 +120,25 @@ def upgrade() -> None:
 
     # Seed criteria data
     op.execute("""
-        INSERT INTO criteria (id, code, name, type, weight) VALUES
-        (gen_random_uuid()::text, 'Cr1', 'Insurance Provider', 'positive', 0.10),
-        (gen_random_uuid()::text, 'Cr2', 'Surgery',            'negative', 0.20),
-        (gen_random_uuid()::text, 'Cr3', 'Room Class',         'positive', 0.075),
-        (gen_random_uuid()::text, 'Cr4', 'Admission Type',     'positive', 0.125),
-        (gen_random_uuid()::text, 'Cr5', 'Severity Score',     'positive', 0.20),
-        (gen_random_uuid()::text, 'Cr6', 'Test Result',        'positive', 0.15)
-        ON CONFLICT (code) DO NOTHING;
+        INSERT IGNORE INTO criteria (id, code, name, type, weight) VALUES
+        (UUID(), 'Cr1', 'Insurance Provider', 'positive', 0.10),
+        (UUID(), 'Cr2', 'Surgery',            'negative', 0.20),
+        (UUID(), 'Cr3', 'Room Class',         'positive', 0.075),
+        (UUID(), 'Cr4', 'Admission Type',     'positive', 0.125),
+        (UUID(), 'Cr5', 'Severity Score',     'positive', 0.20),
+        (UUID(), 'Cr6', 'Test Result',        'positive', 0.15);
     """)
 
     # Default admin user (password: Admin@123)
     op.execute("""
-        INSERT INTO users (id, name, email, hashed_password, role)
+        INSERT IGNORE INTO users (id, name, email, hashed_password, role)
         VALUES (
-            gen_random_uuid()::text,
+            UUID(),
             'Administrator',
             'admin@spk-hgo.local',
             '$2b$12$EKf6zQNIL3qPLrKvFiLUNOIwXqf5jQ3rN3TQJc63zUMx1.K/nODMu',
             'admin'
-        ) ON CONFLICT (email) DO NOTHING;
+        );
     """)
 
 
@@ -153,7 +152,4 @@ def downgrade() -> None:
     op.drop_table("crisp_values")
     op.drop_table("criteria")
     op.drop_table("users")
-    op.execute("DROP TYPE IF EXISTS userrole")
-    op.execute("DROP TYPE IF EXISTS criteriatype")
-    op.execute("DROP TYPE IF EXISTS simulationstatus")
-    op.execute("DROP TYPE IF EXISTS importjobstatus")
+

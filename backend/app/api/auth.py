@@ -12,6 +12,7 @@ from app.schemas.auth import LoginRequest, TokenResponse, UserOut
 from app.core.security import (
     verify_password, create_access_token, create_refresh_token, verify_token
 )
+from app.core.config import settings
 
 router = APIRouter()
 limiter = Limiter(key_func=get_remote_address)
@@ -54,8 +55,8 @@ async def login(
         key="refresh_token",
         value=refresh_token,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=settings.ENVIRONMENT == "production",
+        samesite="lax" if settings.ENVIRONMENT == "development" else "none",
         max_age=7 * 24 * 3600,
         path="/api/auth/refresh",
     )
@@ -91,8 +92,8 @@ async def refresh(
         key="refresh_token",
         value=new_refresh,
         httponly=True,
-        secure=True,
-        samesite="none",
+        secure=settings.ENVIRONMENT == "production",
+        samesite="lax" if settings.ENVIRONMENT == "development" else "none",
         max_age=7 * 24 * 3600,
         path="/api/auth/refresh",
     )
