@@ -17,6 +17,7 @@ celery_config = {
     "enable_utc": True,
     "task_track_started": True,
     "task_acks_late": True,
+    "task_always_eager": settings.CELERY_ALWAYS_EAGER,
     "worker_prefetch_multiplier": 1,
     "result_expires": 3600,
     "include": ["app.tasks.import_task", "app.tasks.simulation_task"],

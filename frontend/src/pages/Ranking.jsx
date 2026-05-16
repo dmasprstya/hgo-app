@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { TableCellsIcon, DocumentTextIcon } from '@heroicons/react/24/outline'
 import { simulationService } from '../services/simulationService'
 import { Badge } from '../components/ui/Badge'
 import { Button } from '../components/ui/Button'
@@ -20,15 +21,17 @@ export default function Ranking() {
         <div className="space-y-4 animate-fade-in">
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Patient Ranking</h1>
-                    <p className="text-gray-400 text-sm">HGO Discovery — Prioritized inpatient list</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Patient Ranking</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">HGO Discovery — Prioritized inpatient list</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="secondary" size="sm" onClick={() => simulationService.export('xlsx')}>
-                        📊 Export XLSX
+                    <Button variant="secondary" size="sm" onClick={() => simulationService.export('xlsx')} className="flex items-center gap-2">
+                        <TableCellsIcon className="w-4 h-4" />
+                        <span>Export XLSX</span>
                     </Button>
-                    <Button variant="secondary" size="sm" onClick={() => simulationService.export('csv')}>
-                        📄 Export CSV
+                    <Button variant="secondary" size="sm" onClick={() => simulationService.export('csv')} className="flex items-center gap-2">
+                        <DocumentTextIcon className="w-4 h-4" />
+                        <span>Export CSV</span>
                     </Button>
                 </div>
             </div>
@@ -67,14 +70,14 @@ export default function Ranking() {
                                 {data?.data?.map((r) => (
                                     <tr key={r.patient_id}>
                                         <td>
-                                            <span className={`font-bold text-sm ${r.rank <= 10 ? 'text-yellow-400' : 'text-white'}`}>
+                                            <span className={`font-bold text-sm ${r.rank <= 10 ? 'text-yellow-600 dark:text-yellow-400' : 'text-gray-900 dark:text-white'}`}>
                                                 #{r.rank}
                                             </span>
                                         </td>
-                                        <td className="font-mono text-xs text-primary-400">{r.patient_code}</td>
-                                        <td className="font-medium text-white">{r.patient_name}</td>
+                                        <td className="font-mono text-xs text-primary-600 dark:text-primary-400">{r.patient_code}</td>
+                                        <td className="font-medium text-gray-900 dark:text-white">{r.patient_name}</td>
                                         <td className="font-mono">{r.output_score?.toFixed(6)}</td>
-                                        <td className="font-mono text-purple-400">{r.hgod_index?.toFixed(6)}</td>
+                                        <td className="font-mono text-purple-600 dark:text-purple-400">{r.hgod_index?.toFixed(6)}</td>
                                         <td><Badge level={r.priority_level} /></td>
                                         <td className="text-gray-500 text-xs">
                                             {r.calculated_at ? new Date(r.calculated_at).toLocaleDateString() : '—'}
@@ -95,7 +98,7 @@ export default function Ranking() {
             </div>
 
             {data?.meta && (
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-500">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm text-gray-500">
                     <span>{data.meta.total} patients ranked</span>
                     <Pagination page={page} totalPages={data.meta.total_pages} onChange={setPage} />
                 </div>

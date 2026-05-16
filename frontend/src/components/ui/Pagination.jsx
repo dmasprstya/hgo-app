@@ -1,3 +1,5 @@
+import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+
 export function Pagination({ page, totalPages, onChange }) {
     if (totalPages <= 1) return null
 
@@ -12,10 +14,10 @@ export function Pagination({ page, totalPages, onChange }) {
             <button
                 onClick={() => onChange(page - 1)}
                 disabled={page === 1}
-                className="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10
+                className="p-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10
                    disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
-                ←
+                <ChevronLeftIcon className="w-4 h-4" />
             </button>
             {start > 1 && (
                 <>
@@ -44,10 +46,10 @@ export function Pagination({ page, totalPages, onChange }) {
             <button
                 onClick={() => onChange(page + 1)}
                 disabled={page === totalPages}
-                className="px-3 py-1.5 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10
+                className="p-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10
                    disabled:opacity-40 disabled:cursor-not-allowed transition"
             >
-                →
+                <ChevronRightIcon className="w-4 h-4" />
             </button>
         </div>
     )

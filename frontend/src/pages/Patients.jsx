@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { PlusIcon, ArrowPathIcon } from '@heroicons/react/24/outline'
 import { patientService } from '../services/patientService'
 import { Button } from '../components/ui/Button'
 import { Badge } from '../components/ui/Badge'
@@ -190,10 +191,15 @@ export default function Patients() {
             {/* Header */}
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-white">Patients</h1>
-                    <p className="text-gray-400 text-sm">Manage patient records and HGO results</p>
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Patients</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm">Manage patient records and HGO results</p>
                 </div>
-                {tab === 'active' && <Button onClick={openCreate}>+ Add Patient</Button>}
+                {tab === 'active' && (
+                    <Button onClick={openCreate} className="flex items-center gap-2">
+                        <PlusIcon className="w-4 h-4" />
+                        <span>Add Patient</span>
+                    </Button>
+                )}
             </div>
 
             {/* Tabs + Search */}
@@ -248,8 +254,8 @@ export default function Patients() {
                                                 onClick={(e) => e.stopPropagation()}
                                             />
                                         </td>
-                                        <td className="font-mono text-xs text-primary-400">{p.patient_code}</td>
-                                        <td className="font-medium text-white">{p.name}</td>
+                                        <td className="font-mono text-xs text-primary-600 dark:text-primary-400">{p.patient_code}</td>
+                                        <td className="font-medium text-gray-900 dark:text-white">{p.name}</td>
                                         <td>{p.age}</td>
                                         <td className="capitalize">{p.gender}</td>
                                         <td>{p.hgo_result?.output_score?.toFixed(4) ?? '—'}</td>
@@ -265,8 +271,9 @@ export default function Patients() {
                                                         <button onClick={() => openDelete(p)} className="text-xs text-red-400 hover:text-red-300">Delete</button>
                                                     </>
                                                 ) : (
-                                                    <button onClick={() => restoreMut.mutate(p.id)} className="text-xs text-emerald-400 hover:text-emerald-300" disabled={restoreMut.isPending}>
-                                                        ↺ Restore
+                                                    <button onClick={() => restoreMut.mutate(p.id)} className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300" disabled={restoreMut.isPending}>
+                                                        <ArrowPathIcon className="w-3.5 h-3.5" />
+                                                        <span>Restore</span>
                                                     </button>
                                                 )}
                                             </div>
@@ -326,7 +333,7 @@ export default function Patients() {
                     </>
                 }
             >
-                <p>Are you sure you want to delete <strong className="text-white">{checkedIds.size} patient{checkedIds.size > 1 ? 's' : ''}</strong>? They will be soft-deleted and hidden from all views.</p>
+                <p>Are you sure you want to delete <strong className="text-gray-900 dark:text-white">{checkedIds.size} patient{checkedIds.size > 1 ? 's' : ''}</strong>? They will be soft-deleted and hidden from all views.</p>
             </Modal>
 
             {/* ── Create / Edit Modal ─────────────────────────────────────── */}
@@ -377,7 +384,7 @@ export default function Patients() {
                     </>
                 }
             >
-                <p>Are you sure you want to delete <strong className="text-white">{selected?.name}</strong>? The record will be soft-deleted.</p>
+                <p>Are you sure you want to delete <strong className="text-gray-900 dark:text-white">{selected?.name}</strong>? The record will be soft-deleted.</p>
             </Modal>
 
             {/* ── Toasts ──────────────────────────────────────────────────── */}

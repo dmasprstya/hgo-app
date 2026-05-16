@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useDropzone } from 'react-dropzone'
+import { FolderIcon, PaperClipIcon } from '@heroicons/react/24/outline'
 
 export function FileDropzone({ onFile, accept = { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'], 'text/csv': ['.csv'] } }) {
     const onDrop = useCallback((accepted) => {
@@ -22,7 +23,9 @@ export function FileDropzone({ onFile, accept = { 'application/vnd.openxmlformat
                 }`}
         >
             <input {...getInputProps()} />
-            <div className="text-5xl mb-3">📁</div>
+            <div className="flex justify-center mb-3">
+                <FolderIcon className={`w-12 h-12 ${isDragActive ? 'text-primary-400' : 'text-gray-500'}`} />
+            </div>
             {isDragActive ? (
                 <p className="text-primary-400 font-semibold">Drop the file here…</p>
             ) : (
@@ -33,7 +36,8 @@ export function FileDropzone({ onFile, accept = { 'application/vnd.openxmlformat
             )}
             {acceptedFiles[0] && (
                 <div className="mt-4 inline-flex items-center gap-2 bg-primary-600/20 border border-primary-500/30 text-primary-300 text-sm px-4 py-2 rounded-xl">
-                    📎 {acceptedFiles[0].name} ({(acceptedFiles[0].size / 1024).toFixed(1)} KB)
+                    <PaperClipIcon className="w-4 h-4" />
+                    <span>{acceptedFiles[0].name} ({(acceptedFiles[0].size / 1024).toFixed(1)} KB)</span>
                 </div>
             )}
         </div>

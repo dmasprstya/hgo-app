@@ -12,16 +12,19 @@ class Settings(BaseSettings):
     DEBUG: bool = False
 
     # Database
-    DATABASE_URL: str = "mysql+aiomysql://root:@localhost/spk_hgo"
+    DATABASE_URL: str = "mysql+aiomysql://root:@127.0.0.1/spk_hgo"
 
     # Redis / Celery
-    REDIS_URL: str = "redis://localhost:6379"
+    REDIS_URL: str = "redis://127.0.0.1:6379"
 
     # JWT
     SECRET_KEY: str = "change-me-to-a-32-char-secret-key!!"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+
+    # Celery
+    CELERY_ALWAYS_EAGER: bool = True  # Default to True for easier local development
 
     # CORS
     CORS_ORIGINS: str = "http://localhost:5173"

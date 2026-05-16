@@ -6,7 +6,7 @@ export function Button({ children, variant = 'primary', size = 'md', className, 
         primary: 'btn-primary',
         secondary: 'btn-secondary',
         danger: 'btn-danger',
-        ghost: 'btn bg-transparent hover:bg-white/10 text-gray-300 border border-white/10',
+        ghost: 'btn bg-transparent hover:bg-gray-100 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10',
     }
     const sizes = {
         sm: 'text-xs px-3 py-1.5',

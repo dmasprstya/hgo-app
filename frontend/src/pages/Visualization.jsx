@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import { ChartBarIcon } from '@heroicons/react/24/outline'
 import { dashboardService } from '../services/dashboardService'
 import { ScatterChart } from '../components/charts/ScatterChart'
 import { DumbbellChart } from '../components/charts/DumbbellChart'
@@ -24,15 +25,15 @@ export default function Visualization() {
     return (
         <div className="space-y-6 animate-fade-in">
             <div>
-                <h1 className="text-2xl font-bold text-white">Visualization</h1>
-                <p className="text-gray-400 text-sm">Interactive charts for HGO Discovery results</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Visualization</h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">Interactive charts for HGO Discovery results</p>
             </div>
 
             {/* Scatter */}
             <div className="card">
                 <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                     <div>
-                        <h3 className="font-semibold text-white">Scatter: Output Score vs HGOd Index</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Scatter: Output Score vs HGOd Index</h3>
                         <p className="text-xs text-gray-500">All {scatterData.length} patients — color coded by priority</p>
                     </div>
                     <ExportButton targetRef={scatterRef} filename="scatter_hgo" disabled={!scatterData.length} />
@@ -66,7 +67,7 @@ export default function Visualization() {
             <div className="card">
                 <div className="flex items-center justify-between flex-wrap gap-3 mb-4">
                     <div>
-                        <h3 className="font-semibold text-white">Top Patients — Score Comparison</h3>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">Top Patients — Score Comparison</h3>
                         <p className="text-xs text-gray-500">Output Score vs HGOd Index for top N patients</p>
                     </div>
                     <div className="flex items-center gap-3">
@@ -98,15 +99,18 @@ export default function Visualization() {
             </div>
 
             {/* Interpretation */}
-            <div className="card bg-primary-950/30 border-primary-800/30">
-                <h3 className="font-semibold text-white mb-3">📊 Chart Interpretation Guide</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-400">
+            <div className="card bg-primary-50 dark:bg-primary-950/30 border-primary-100 dark:border-primary-800/30">
+                <div className="flex items-center gap-2 mb-3">
+                    <ChartBarIcon className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Chart Interpretation Guide</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-600 dark:text-gray-400">
                     <div>
-                        <p className="text-primary-400 font-medium mb-1">Output Score (SAW)</p>
+                        <p className="text-primary-700 dark:text-primary-400 font-medium mb-1">Output Score (SAW)</p>
                         <p>Higher output score indicates better patient condition overall. Range: 0–1. Calculated via weighted sum of normalized criteria.</p>
                     </div>
                     <div>
-                        <p className="text-purple-400 font-medium mb-1">HGOd Index</p>
+                        <p className="text-purple-700 dark:text-purple-400 font-medium mb-1">HGOd Index</p>
                         <p>Lower HGOd index = higher inpatient priority. Formula: 1 / Σ(Wj × Xj). Patients in top-left scatter quadrant need immediate attention.</p>
                     </div>
                 </div>

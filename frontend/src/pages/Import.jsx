@@ -3,6 +3,7 @@ import * as XLSX from 'xlsx'
 import { FileDropzone } from '../components/ui/FileDropzone'
 import { ProgressBar } from '../components/ui/ProgressBar'
 import { Button } from '../components/ui/Button'
+import { ArrowDownTrayIcon, PaperClipIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 import { importService } from '../services/importService'
 import { useImportStatus } from '../hooks/useImportStatus'
 
@@ -49,15 +50,16 @@ export default function Import() {
     return (
         <div className="space-y-6 animate-fade-in max-w-3xl">
             <div>
-                <h1 className="text-2xl font-bold text-white">Import Patient Data</h1>
-                <p className="text-gray-400 text-sm mt-1">Upload Excel or CSV file with patient criteria data</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Import Patient Data</h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Upload Excel or CSV file with patient criteria data</p>
             </div>
 
             <div className="card space-y-4">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <h3 className="font-semibold text-white">Upload File</h3>
-                    <Button variant="ghost" size="sm" onClick={() => importService.getTemplate()}>
-                        📥 Download Template
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Upload File</h3>
+                    <Button variant="ghost" size="sm" onClick={() => importService.getTemplate()} className="flex items-center gap-2">
+                        <ArrowDownTrayIcon className="w-4 h-4" />
+                        <span>Download Template</span>
                     </Button>
                 </div>
 
@@ -71,7 +73,10 @@ export default function Import() {
 
                 {file && !jobId && (
                     <div className="flex items-center justify-between pt-2">
-                        <p className="text-sm text-gray-300">📎 {file.name} ({(file.size / 1024).toFixed(1)} KB)</p>
+                        <p className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+                            <PaperClipIcon className="w-4 h-4" />
+                            <span>{file.name} ({(file.size / 1024).toFixed(1)} KB)</span>
+                        </p>
                         <Button onClick={handleUpload} disabled={uploading}>
                             {uploading ? 'Uploading…' : 'Upload & Import'}
                         </Button>
@@ -83,17 +88,17 @@ export default function Import() {
                     <div className="space-y-3 pt-2">
                         <ProgressBar value={status.progress_pct ?? 0} label={`Status: ${status.status}`} />
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center text-sm">
-                            <div className="glass rounded-xl p-3">
-                                <p className="text-gray-400 text-xs">Total Rows</p>
-                                <p className="font-bold text-white text-lg">{status.total_rows}</p>
+                            <div className="bg-gray-50 dark:glass rounded-xl p-3 border border-gray-100 dark:border-none">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs">Total Rows</p>
+                                <p className="font-bold text-gray-900 dark:text-white text-lg">{status.total_rows}</p>
                             </div>
-                            <div className="glass rounded-xl p-3">
-                                <p className="text-gray-400 text-xs">Processed</p>
-                                <p className="font-bold text-green-400 text-lg">{status.processed_rows}</p>
+                            <div className="bg-gray-50 dark:glass rounded-xl p-3 border border-gray-100 dark:border-none">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs">Processed</p>
+                                <p className="font-bold text-green-600 dark:text-green-400 text-lg">{status.processed_rows}</p>
                             </div>
-                            <div className="glass rounded-xl p-3">
-                                <p className="text-gray-400 text-xs">Failed</p>
-                                <p className="font-bold text-red-400 text-lg">{status.failed_rows}</p>
+                            <div className="bg-gray-50 dark:glass rounded-xl p-3 border border-gray-100 dark:border-none">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs">Failed</p>
+                                <p className="font-bold text-red-600 dark:text-red-400 text-lg">{status.failed_rows}</p>
                             </div>
                         </div>
                         {status.error_log && (
@@ -103,7 +108,8 @@ export default function Import() {
                         )}
                         {isDone && status.status === 'completed' && (
                             <div className="flex items-center gap-2 bg-green-500/10 border border-green-500/20 text-green-400 text-sm px-4 py-3 rounded-xl">
-                                ✅ Import completed successfully!
+                                <CheckCircleIcon className="w-5 h-5 shrink-0" />
+                                <span>Import completed successfully!</span>
                                 <button className="ml-auto underline" onClick={() => { setJobId(null); setFile(null); setPreview(null) }}>
                                     Upload another
                                 </button>
@@ -116,7 +122,7 @@ export default function Import() {
             {/* Preview */}
             {preview && (
                 <div className="card">
-                    <h3 className="font-semibold text-white mb-3">Preview (first 10 rows)</h3>
+                    <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Preview (first 10 rows)</h3>
                     <div className="table-wrapper">
                         <table className="data-table">
                             <thead>

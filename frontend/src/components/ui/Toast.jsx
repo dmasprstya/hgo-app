@@ -1,4 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
+import {
+    CheckCircleIcon,
+    ExclamationCircleIcon,
+    InformationCircleIcon,
+    XMarkIcon
+} from '@heroicons/react/24/outline'
 
 export function Toast({ message, type = 'success', onClose, duration = 3500 }) {
     const [visible, setVisible] = useState(false)
@@ -13,13 +19,15 @@ export function Toast({ message, type = 'success', onClose, duration = 3500 }) {
         return () => clearTimeout(timer)
     }, [duration, onClose])
 
-    const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'
+    const Icon = type === 'success' ? CheckCircleIcon : type === 'error' ? ExclamationCircleIcon : InformationCircleIcon
 
     return (
-        <div className={`toast toast-${type} ${visible ? 'toast-enter' : 'toast-exit'}`}>
-            <span className="toast-icon">{icon}</span>
-            <span className="toast-msg">{message}</span>
-            <button className="toast-close" onClick={() => { setVisible(false); setTimeout(() => onClose?.(), 300) }}>✕</button>
+        <div className={`toast toast-${type} ${visible ? 'toast-enter' : 'toast-exit'} flex items-center gap-3`}>
+            <Icon className="w-5 h-5 shrink-0" />
+            <span className="toast-msg flex-1">{message}</span>
+            <button className="p-0.5 hover:bg-black/10 dark:hover:bg-white/10 rounded transition-colors" onClick={() => { setVisible(false); setTimeout(() => onClose?.(), 300) }}>
+                <XMarkIcon className="w-4 h-4" />
+            </button>
         </div>
     )
 }

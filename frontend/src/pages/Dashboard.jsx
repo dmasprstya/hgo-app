@@ -1,5 +1,11 @@
 import { useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
+import {
+    UsersIcon,
+    ExclamationTriangleIcon,
+    ExclamationCircleIcon,
+    ChartBarIcon
+} from '@heroicons/react/24/outline'
 import { dashboardService } from '../services/dashboardService'
 import { KpiCard } from '../components/ui/Card'
 import { ScatterChart } from '../components/charts/ScatterChart'
@@ -36,16 +42,36 @@ export default function Dashboard() {
     return (
         <div className="space-y-6 animate-fade-in">
             <div>
-                <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-                <p className="text-gray-400 text-sm mt-1">HGO Discovery — Inpatient Prioritization Overview</p>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+                <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">HGO Discovery — Inpatient Prioritization Overview</p>
             </div>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <KpiCard label="Total Patients" value={summary?.total_patients?.toLocaleString() ?? 0} color="primary" />
-                <KpiCard label="Critical Priority" value={summary?.critical_count ?? 0} color="danger" />
-                <KpiCard label="High Priority" value={summary?.high_count ?? 0} color="warning" />
-                <KpiCard label="Avg HGOd Index" value={summary?.avg_hgod_index?.toFixed(4) ?? '—'} color="success" />
+                <KpiCard
+                    label="Total Patients"
+                    value={summary?.total_patients?.toLocaleString() ?? 0}
+                    color="primary"
+                    icon={UsersIcon}
+                />
+                <KpiCard
+                    label="Critical Priority"
+                    value={summary?.critical_count ?? 0}
+                    color="danger"
+                    icon={ExclamationTriangleIcon}
+                />
+                <KpiCard
+                    label="High Priority"
+                    value={summary?.high_count ?? 0}
+                    color="warning"
+                    icon={ExclamationCircleIcon}
+                />
+                <KpiCard
+                    label="Avg HGOd Index"
+                    value={summary?.avg_hgod_index?.toFixed(4) ?? '—'}
+                    color="success"
+                    icon={ChartBarIcon}
+                />
             </div>
 
             {summary?.last_simulation && (
@@ -60,7 +86,7 @@ export default function Dashboard() {
                 <div className="card">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h3 className="text-base font-semibold text-white">Output Score vs HGOd Index</h3>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Output Score vs HGOd Index</h3>
                             <p className="text-xs text-gray-500">{scatterData.length} patients</p>
                         </div>
                         <ExportButton targetRef={scatterRef} filename="scatter_chart" disabled={!scatterData.length} />
@@ -74,7 +100,7 @@ export default function Dashboard() {
                 <div className="card">
                     <div className="flex items-center justify-between mb-4">
                         <div>
-                            <h3 className="text-base font-semibold text-white">Top 20 Patients — Score Comparison</h3>
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white">Top 20 Patients — Score Comparison</h3>
                             <p className="text-xs text-gray-500">Output Score & HGOd Index</p>
                         </div>
                         <ExportButton targetRef={dumbbellRef} filename="dumbbell_chart" disabled={!dumbbellData.length} />
@@ -87,7 +113,7 @@ export default function Dashboard() {
 
             {/* Priority breakdown */}
             <div className="card">
-                <h3 className="text-base font-semibold text-white mb-4">Priority Breakdown</h3>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Priority Breakdown</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
                     {[
                         { label: 'Critical', count: summary?.critical_count, color: 'bg-red-500' },
@@ -100,8 +126,8 @@ export default function Dashboard() {
                         return (
                             <div key={label} className="space-y-2">
                                 <div className={`h-1 rounded-full ${color} mx-auto`} style={{ width: `${pct}%`, minWidth: 8 }} />
-                                <p className="text-lg font-bold text-white">{count ?? 0}</p>
-                                <p className="text-xs text-gray-400">{label} ({pct}%)</p>
+                                <p className="text-lg font-bold text-gray-900 dark:text-white">{count ?? 0}</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">{label} ({pct}%)</p>
                             </div>
                         )
                     })}
